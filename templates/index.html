@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>md2pdf - Markdown to PDF</title>
+<meta name="description" content="Convert Markdown to PDF with Mermaid, syntax highlighting and more.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+:root {
+    --bg: #0a0a14;
+    --surface: #12122a;
+    --surface-2: #1c1c3a;
+    --surface-3: #252550;
+    --border: #2a2a55;
+    --border-hover: #3d3d70;
+    --text: #e0e0f0;
+    --text-muted: #7878a8;
+    --text-dim: #5858808;
+    --accent: #6c63ff;
+    --accent-hover: #7f78ff;
+    --accent-glow: rgba(108, 99, 255, 0.25);
+    --accent-soft: rgba(108, 99, 255, 0.08);
+    --success: #34d399;
+    --success-bg: rgba(52, 211, 153, 0.1);
+    --danger: #f87171;
+    --danger-bg: rgba(248, 113, 113, 0.1);
+    --warning: #fbbf24;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.5);
+    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+/* ===== Header ===== */
+.header {
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 10;
+}
+.header h1 {
+    font-size: 1.3em;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), #a78bfa, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+}
+.header .subtitle {
+    font-size: 0.78em;
+    color: var(--text-muted);
+    margin-left: 12px;
+}
+
+/* ===== View Toggle ===== */
+.view-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 3px;
+    border: 1px solid var(--border);
+}
+.view-tab {
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.view-tab:hover { color: var(--text); }
+.view-tab.active {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+/* ===== Actions ===== */
+.actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+    white-space: nowrap;
+}
+.btn:hover { background: var(--surface-3); border-color: var(--border-hover); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+.btn-primary:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 4px 20px var(--accent-glow);
+}
+.btn-success {
+    background: var(--success);
+    border-color: var(--success);
+    color: #064e3b;
+    font-weight: 600;
+}
+.btn-success:hover {
+    background: #4ade80;
+    box-shadow: 0 4px 20px rgba(52, 211, 153, 0.3);
+}
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 0.72em;
+    border-radius: 6px;
+}
+.btn-icon {
+    padding: 6px 8px;
+    font-size: 0.85em;
+    border-radius: 6px;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+/* ===== Main Content Area ===== */
+.main-content {
+    height: calc(100vh - 56px);
+    position: relative;
+}
+
+/* ===== FILES VIEW ===== */
+.files-view {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Drop Zone */
+.drop-zone {
+    position: relative;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    margin: 20px 24px 16px;
+    padding: 40px 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--surface) 0%, transparent 100%);
+    overflow: hidden;
+}
+.drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, var(--accent-soft), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+.drop-zone:hover { border-color: var(--accent); }
+.drop-zone:hover::before { opacity: 1; }
+.drop-zone.drag-over {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, rgba(108,99,255,0.08) 0%, rgba(108,99,255,0.02) 100%);
+    transform: scale(1.005);
+    box-shadow: 0 0 40px var(--accent-glow), inset 0 0 40px var(--accent-soft);
+}
+.drop-zone.drag-over::before { opacity: 1; }
+
+.drop-zone-icon {
+    font-size: 2.8em;
+    margin-bottom: 12px;
+    display: block;
+    filter: grayscale(0.3);
+    transition: all 0.3s ease;
+    position: relative;
+}
+.drop-zone.drag-over .drop-zone-icon {
+    transform: scale(1.15) translateY(-4px);
+    filter: grayscale(0);
+}
+.drop-zone-title {
+    font-size: 1.05em;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+    position: relative;
+}
+.drop-zone-sub {
+    font-size: 0.82em;
+    color: var(--text-muted);
+    position: relative;
+}
+.drop-zone-sub .accent { color: var(--accent); font-weight: 500; cursor: pointer; }
+.drop-zone-sub .accent:hover { text-decoration: underline; }
+
+/* File Queue */
+.file-queue-wrapper {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0 24px 20px;
+}
+.file-queue-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 0 4px;
+}
+.file-queue-label {
+    font-size: 0.82em;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.file-count-badge {
+    background: var(--accent);
+    color: white;
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    min-width: 22px;
+    text-align: center;
+}
+.file-queue-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.file-queue {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 4px;
+}
+.file-queue::-webkit-scrollbar { width: 5px; }
+.file-queue::-webkit-scrollbar-track { background: transparent; }
+.file-queue::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+.file-queue::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+/* File Card */
+.file-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: grab;
+    transition: all var(--transition);
+    position: relative;
+    user-select: none;
+}
+.file-card:hover {
+    border-color: var(--border-hover);
+    background: var(--surface-2);
+    box-shadow: var(--shadow-sm);
+}
+.file-card.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 1px var(--accent), var(--shadow-sm);
+}
+.file-card.dragging {
+    opacity: 0.4;
+    transform: scale(0.97);
+}
+.file-card.drag-target-above {
+    border-top: 2px solid var(--accent);
+    margin-top: -1px;
+}
+.file-card.drag-target-below {
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: -1px;
+}
+
+.file-card-grip {
+    color: var(--text-muted);
+    font-size: 0.85em;
+    opacity: 0.4;
+    transition: opacity var(--transition);
+    cursor: grab;
+    padding: 4px 2px;
+}
+.file-card:hover .file-card-grip { opacity: 0.8; }
+
+.file-card-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent-soft), rgba(108,99,255,0.15));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+    flex-shrink: 0;
+}
+
+.file-card-info {
+    flex: 1;
+    min-width: 0;
+}
+.file-card-name {
+    font-size: 0.88em;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.file-card-meta {
+    font-size: 0.72em;
+    color: var(--text-muted);
+    margin-top: 2px;
+    display: flex;
+    gap: 10px;
+}
+
+.file-card-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity var(--transition);
+}
+.file-card:hover .file-card-actions { opacity: 1; }
+
+.file-card-status {
+    font-size: 0.7em;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.file-card-status.ready { background: var(--accent-soft); color: var(--accent); }
+.file-card-status.converting { background: rgba(251, 191, 36, 0.1); color: var(--warning); }
+.file-card-status.done { background: var(--success-bg); color: var(--success); }
+.file-card-status.error { background: var(--danger-bg); color: var(--danger); }
+
+/* Empty state */
+.file-queue-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 0.85em;
+    gap: 8px;
+    padding: 40px 20px;
+}
+.file-queue-empty span:first-child { font-size: 2em; opacity: 0.4; }
+
+/* ===== EDITOR VIEW ===== */
+.editor-view {
+    height: 100%;
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+}
+.editor-view.active { display: grid; }
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.panel-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82em;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.panel-header .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+.dot-green { background: var(--success); }
+.dot-blue { background: var(--accent); }
+
+.editor-panel { border-right: 1px solid var(--border); }
+
+textarea {
+    flex: 1;
+    background: var(--bg);
+    color: var(--text);
+    border: none;
+    padding: 20px;
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+    tab-size: 4;
+}
+textarea::placeholder { color: var(--text-muted); }
+
+/* ===== Preview ===== */
+.preview-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    background: var(--bg);
+}
+.preview-content h1 { font-size: 1.6em; margin: 18px 0 10px; color: #cdd6f4; border-bottom: 2px solid var(--border); padding-bottom: 6px; }
+.preview-content h2 { font-size: 1.3em; margin: 16px 0 8px; color: #bac2de; }
+.preview-content h3 { font-size: 1.1em; margin: 12px 0 6px; color: #a6adc8; }
+.preview-content h4 { font-size: 1em; margin: 10px 0 5px; color: #9399b2; }
+.preview-content h5, .preview-content h6 { font-size: 0.9em; margin: 8px 0 4px; color: #7f849c; }
+.preview-content p { margin: 6px 0; line-height: 1.7; }
+.preview-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.85em; }
+.preview-content th, .preview-content td { border: 1px solid var(--border); padding: 6px 10px; }
+.preview-content th { background: var(--surface-2); font-weight: 600; }
+.preview-content pre { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin: 10px 0; overflow-x: auto; }
+.preview-content code { font-family: 'Cascadia Code', monospace; font-size: 0.88em; }
+.preview-content p code, .preview-content li code, .preview-content td code { background: var(--surface-2); padding: 1px 5px; border-radius: 3px; color: #f38ba8; }
+.preview-content pre code.hljs { padding: 0; background: transparent; }
+.preview-content blockquote { border-left: 4px solid var(--accent); background: rgba(108,99,255,0.05); padding: 10px 14px; margin: 12px 0; border-radius: 3px; }
+.preview-content hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+.preview-content li { margin: 3px 0; margin-left: 20px; }
+.preview-content ul, .preview-content ol { margin: 8px 0 8px 24px; }
+.preview-content .mermaid { background: #fafafa; border-radius: 6px; padding: 16px; margin: 12px 0; }
+.preview-content a { color: #8b8bf5; text-decoration: none; border-bottom: 1px solid rgba(139,139,245,0.3); transition: color 0.2s; }
+.preview-content a:hover { color: #a5a5ff; }
+.preview-content del { text-decoration: line-through; color: #6c7086; }
+.preview-content mark { background: rgba(254,240,138,0.2); padding: 1px 4px; border-radius: 2px; color: #fef08a; }
+.preview-content img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0; }
+.preview-content dt { font-weight: 600; margin-top: 10px; color: #cdd6f4; }
+.preview-content dd { margin-left: 20px; margin-bottom: 6px; }
+.preview-content .footnote { font-size: 0.85em; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 24px; padding-top: 12px; }
+
+/* ===== Global Drop Overlay ===== */
+.drop-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(108, 99, 255, 0.12);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.drop-overlay.active { display: flex; pointer-events: auto; }
+.drop-overlay .drop-box {
+    background: var(--surface);
+    border: 2px dashed var(--accent);
+    border-radius: 20px;
+    padding: 56px 80px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    animation: dropPulse 1.5s ease-in-out infinite;
+}
+.drop-box-icon { font-size: 3em; margin-bottom: 16px; display: block; }
+.drop-box-text { font-size: 1.15em; font-weight: 600; color: var(--accent); }
+.drop-box-sub { font-size: 0.82em; color: var(--text-muted); margin-top: 6px; }
+
+@keyframes dropPulse {
+    0%, 100% { box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 0px var(--accent-glow); }
+    50% { box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 12px transparent; }
+}
+
+/* ===== Status Toast ===== */
+.status {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-size: 0.83em;
+    font-weight: 500;
+    transform: translateY(100px);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 2000;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(8px);
+}
+.status.show { transform: translateY(0); }
+.status.success { background: rgba(52, 211, 153, 0.95); color: #064e3b; }
+.status.error { background: rgba(248, 113, 113, 0.95); color: #450a0a; }
+.status.loading { background: rgba(108, 99, 255, 0.95); color: white; }
+
+/* ===== Spinner ===== */
+.spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Settings Bar ===== */
+.settings-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin: 0 24px 14px;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color var(--transition);
+}
+.settings-bar:hover { border-color: var(--border-hover); }
+
+.settings-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.settings-label {
+    font-size: 0.76em;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+.settings-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--border);
+}
+
+.preset-select {
+    appearance: none;
+    background: var(--surface-3);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 32px 6px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237878a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+}
+.preset-select:hover {
+    border-color: var(--accent);
+    background-color: var(--surface-2);
+}
+.preset-select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+.preset-select option {
+    background: var(--surface);
+    color: var(--text);
+}
+
+.settings-hint {
+    font-size: 0.7em;
+    color: var(--text-muted);
+    opacity: 0.6;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+/* ===== Progress bar ===== */
+.batch-progress {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 24px 12px;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.batch-progress.active { opacity: 1; }
+.batch-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #a78bfa);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.4s ease;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .editor-view { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+    .editor-panel { border-right: none; border-bottom: 1px solid var(--border); }
+    .drop-zone { padding: 24px 16px; margin: 12px 16px 10px; }
+    .file-queue-wrapper { padding: 0 16px 12px; }
+    .header { padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
+    .settings-bar { margin: 0 16px 10px; padding: 10px 14px; flex-wrap: wrap; gap: 12px; }
+    .settings-hint { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div style="display:flex;align-items:center;gap:20px;">
+        <div style="display:flex;align-items:baseline;">
+            <h1>md2pdf</h1>
+            <span class="subtitle">Markdown &rarr; PDF</span>
+        </div>
+        <div class="view-tabs" id="view-tabs">
+            <button class="view-tab active" data-view="files" id="tab-files" onclick="switchView('files')">
+                &#128195; Files
+            </button>
+            <button class="view-tab" data-view="editor" id="tab-editor" onclick="switchView('editor')">
+                &#9998; Editor
+            </button>
+        </div>
+    </div>
+    <div class="actions" id="header-actions">
+        <label class="btn" for="file-input" id="upload-btn">
+            &#128206; Upload .md
+            <input type="file" id="file-input" accept=".md,.markdown,.txt" multiple style="display:none">
+        </label>
+        <button class="btn" id="preview-pdf-btn" onclick="previewCurrentPdf()" style="display:none;">
+            &#128065; Visualizar PDF
+        </button>
+        <button class="btn btn-primary" id="export-btn" onclick="exportCurrentPdf()" style="display:none;">
+            &#128196; Exportar PDF
+        </button>
+    </div>
+</div>
+
+<div class="main-content">
+    <!-- ===== FILES VIEW ===== -->
+    <div class="files-view" id="files-view">
+        <div class="drop-zone" id="drop-zone">
+            <span class="drop-zone-icon">&#128195;</span>
+            <div class="drop-zone-title">Drag your .md files here</div>
+            <div class="drop-zone-sub">
+                or <span class="accent" onclick="document.getElementById('file-input').click()">browse your computer</span>
+                &nbsp;&middot;&nbsp; Supports multiple files
+            </div>
+        </div>
+
+        <div class="settings-bar" id="settings-bar">
+            <div class="settings-group">
+                <span class="settings-label">&#128207; Width</span>
+                <select class="preset-select" id="preset-width">
+                    <option value="a4" selected>A4 (210mm)</option>
+                    <option value="letter">Letter (216mm)</option>
+                    <option value="wide">Wide (280mm)</option>
+                    <option value="compact">Compact (170mm)</option>
+                </select>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-group">
+                <span class="settings-label">&#8614; Margin</span>
+                <select class="preset-select" id="preset-margin">
+                    <option value="none">None</option>
+                    <option value="tight">Tight</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="wide">Wide</option>
+                </select>
+            </div>
+            <span class="settings-hint">Applied when exporting PDF</span>
+        </div>
+
+        <div class="batch-progress" id="batch-progress">
+            <div class="batch-progress-bar" id="batch-progress-bar"></div>
+        </div>
+
+        <div class="file-queue-wrapper">
+            <div class="file-queue-header" id="file-queue-header" style="display:none;">
+                <span class="file-queue-label">
+                    File Queue
+                    <span class="file-count-badge" id="file-count-badge">0</span>
+                </span>
+                <div class="file-queue-actions">
+                    <button class="btn btn-sm" onclick="clearAllFiles()" id="clear-all-btn">
+                        &#128465; Clear
+                    </button>
+                    <button class="btn btn-sm btn-success" onclick="convertAll()" id="convert-all-btn">
+                        &#9889; Convert All
+                    </button>
+                </div>
+            </div>
+            <div class="file-queue" id="file-queue">
+                <div class="file-queue-empty" id="file-queue-empty">
+                    <span>&#128196;</span>
+                    <span>No files in queue</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== EDITOR VIEW ===== -->
+    <div class="editor-view" id="editor-view">
+        <div class="panel editor-panel">
+            <div class="panel-header">
+                <span><span class="dot dot-green"></span>Editor <span id="editor-filename" style="color:var(--accent);margin-left:6px;font-weight:600;text-transform:none;"></span></span>
+                <span id="char-count">0 chars</span>
+            </div>
+            <textarea id="editor" placeholder="Paste or type your Markdown here...&#10;&#10;Or drag a .md file to this area."></textarea>
+        </div>
+        <div class="panel preview-panel">
+            <div class="panel-header">
+                <span><span class="dot dot-blue"></span>Preview</span>
+                <span id="preview-status">Waiting...</span>
+            </div>
+            <div class="preview-content" id="preview"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Global drop overlay (appears when dragging anywhere) -->
+<div class="drop-overlay" id="drop-overlay">
+    <div class="drop-box">
+        <span class="drop-box-icon">&#128195;</span>
+        <div class="drop-box-text">Drop .md files here</div>
+        <div class="drop-box-sub">Supports multiple files at once</div>
+    </div>
+</div>
+
+<div class="status" id="status"></div>
+
+<script>
+mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+// ===================== DOM REFS =====================
+const editor = document.getElementById('editor');
+const preview = document.getElementById('preview');
+const charCount = document.getElementById('char-count');
+const previewStatus = document.getElementById('preview-status');
+const statusEl = document.getElementById('status');
+const dropOverlay = document.getElementById('drop-overlay');
+const fileInput = document.getElementById('file-input');
+const dropZone = document.getElementById('drop-zone');
+const fileQueue = document.getElementById('file-queue');
+const fileQueueHeader = document.getElementById('file-queue-header');
+const fileQueueEmpty = document.getElementById('file-queue-empty');
+const fileCountBadge = document.getElementById('file-count-badge');
+const batchProgress = document.getElementById('batch-progress');
+const batchProgressBar = document.getElementById('batch-progress-bar');
+
+// ===================== STATE =====================
+let fileList = [];  // { id, name, size, content, status: 'ready'|'converting'|'done'|'error' }
+let activeFileId = null;
+let currentView = 'files';
+let debounceTimer = null;
+let dragSrcId = null;
+let fileIdCounter = 0;
+
+
+// ===================== VIEW SWITCHING =====================
+function switchView(view) {
+    currentView = view;
+    document.getElementById('files-view').style.display = view === 'files' ? 'flex' : 'none';
+    const ev = document.getElementById('editor-view');
+    if (view === 'editor') {
+        ev.style.display = 'grid';
+        ev.classList.add('active');
+    } else {
+        ev.style.display = 'none';
+        ev.classList.remove('active');
+    }
+
+    document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + view).classList.add('active');
+
+    // Toggle header buttons
+    const previewBtn = document.getElementById('preview-pdf-btn');
+    const exportBtn = document.getElementById('export-btn');
+    if (view === 'editor') {
+        previewBtn.style.display = '';
+        exportBtn.style.display = '';
+    } else {
+        previewBtn.style.display = 'none';
+        exportBtn.style.display = 'none';
+    }
+}
+
+
+// ===================== FILE MANAGEMENT =====================
+function addFiles(files) {
+    const validExts = ['.md', '.markdown', '.txt'];
+    let addedCount = 0;
+
+    for (const file of files) {
+        const ext = '.' + file.name.split('.').pop().toLowerCase();
+        if (!validExts.includes(ext)) continue;
+
+        const id = 'file-' + (++fileIdCounter);
+        const entry = { id, name: file.name, size: file.size, content: '', status: 'ready' };
+        fileList.push(entry);
+
+        // Read content async
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            entry.content = e.target.result;
+            // Extract first line as preview
+            updateFileCard(entry);
+        };
+        reader.readAsText(file);
+        addedCount++;
+    }
+
+    if (addedCount === 0) {
+        showStatus('No .md files found', 'error');
+        return;
+    }
+
+    showStatus(`${addedCount} file(s) added`, 'success');
+    renderFileQueue();
+}
+
+function removeFile(id) {
+    fileList = fileList.filter(f => f.id !== id);
+    if (activeFileId === id) activeFileId = null;
+    renderFileQueue();
+}
+
+function clearAllFiles() {
+    fileList = [];
+    activeFileId = null;
+    renderFileQueue();
+    showStatus('Queue cleared', 'success');
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function stripExt(name) {
+    const idx = name.lastIndexOf('.');
+    return idx > 0 ? name.substring(0, idx) : name;
+}
+
+function getFirstLines(content, n = 2) {
+    if (!content) return 'Loading...';
+    const lines = content.split('\n').filter(l => l.trim()).slice(0, n);
+    let preview = lines.join(' ').substring(0, 80);
+    if (preview.length >= 80) preview += '...';
+    // Strip markdown syntax for cleaner preview
+    return preview.replace(/^#+ /, '').replace(/[*_~`]/g, '');
+}
+
+
+// ===================== RENDER FILE QUEUE =====================
+function renderFileQueue() {
+    const hasFiles = fileList.length > 0;
+    fileQueueHeader.style.display = hasFiles ? 'flex' : 'none';
+    fileQueueEmpty.style.display = hasFiles ? 'none' : 'flex';
+    fileCountBadge.textContent = fileList.length;
+
+    // Build cards
+    const existingCards = fileQueue.querySelectorAll('.file-card');
+    existingCards.forEach(c => c.remove());
+
+    fileList.forEach((f, idx) => {
+        const card = createFileCard(f, idx);
+        fileQueue.insertBefore(card, fileQueueEmpty);
+    });
+}
+
+function createFileCard(f, idx) {
+    const card = document.createElement('div');
+    card.className = 'file-card' + (f.id === activeFileId ? ' active' : '');
+    card.dataset.fileId = f.id;
+    card.draggable = true;
+
+    const statusLabels = { ready: 'Ready', converting: 'Converting...', done: 'Done', error: 'Error' };
+
+    card.innerHTML = `
+        <div class="file-card-grip" title="Drag to reorder">&#8801;</div>
+        <div class="file-card-icon">&#128196;</div>
+        <div class="file-card-info">
+            <div class="file-card-name">${f.name}</div>
+            <div class="file-card-meta">
+                <span>${formatSize(f.size)}</span>
+                <span>${getFirstLines(f.content)}</span>
+            </div>
+        </div>
+        <span class="file-card-status ${f.status}">${statusLabels[f.status]}</span>
+        <div class="file-card-actions">
+            <button class="btn btn-icon btn-sm" onclick="event.stopPropagation(); openInEditor('${f.id}')" title="Edit">&#9999;</button>
+            <button class="btn btn-icon btn-sm" onclick="event.stopPropagation(); convertSingle('${f.id}')" title="Convert PDF">&#128196;</button>
+            <button class="btn btn-icon btn-sm" onclick="event.stopPropagation(); previewSingle('${f.id}')" title="Preview PDF">&#128065;</button>
+            <button class="btn btn-icon btn-sm" onclick="event.stopPropagation(); removeFile('${f.id}')" title="Remove" style="color:var(--danger);">&times;</button>
+        </div>
+    `;
+
+    // Click to open in editor
+    card.addEventListener('click', () => openInEditor(f.id));
+
+    // Drag events
+    card.addEventListener('dragstart', onCardDragStart);
+    card.addEventListener('dragover', onCardDragOver);
+    card.addEventListener('dragleave', onCardDragLeave);
+    card.addEventListener('drop', onCardDrop);
+    card.addEventListener('dragend', onCardDragEnd);
+
+    return card;
+}
+
+function updateFileCard(entry) {
+    const card = fileQueue.querySelector(`[data-file-id="${entry.id}"]`);
+    if (!card) return;
+    const meta = card.querySelector('.file-card-meta');
+    if (meta) {
+        meta.innerHTML = `<span>${formatSize(entry.size)}</span><span>${getFirstLines(entry.content)}</span>`;
+    }
+    const statusEl = card.querySelector('.file-card-status');
+    if (statusEl) {
+        const labels = { ready: 'Ready', converting: 'Converting...', done: 'Done', error: 'Error' };
+        statusEl.className = 'file-card-status ' + entry.status;
+        statusEl.textContent = labels[entry.status];
+    }
+}
+
+
+// ===================== DRAG & DROP (card reorder) =====================
+let isInternalDrag = false;  // Flag to distinguish card reorder from file drops
+
+function onCardDragStart(e) {
+    isInternalDrag = true;
+    dragSrcId = e.currentTarget.dataset.fileId;
+    e.currentTarget.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/x-card-id', dragSrcId);
+}
+
+function onCardDragOver(e) {
+    if (!isInternalDrag) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+
+    card.classList.remove('drag-target-above', 'drag-target-below');
+    if (e.clientY < midY) {
+        card.classList.add('drag-target-above');
+    } else {
+        card.classList.add('drag-target-below');
+    }
+}
+
+function onCardDragLeave(e) {
+    e.currentTarget.classList.remove('drag-target-above', 'drag-target-below');
+}
+
+function onCardDrop(e) {
+    if (!isInternalDrag) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const targetCard = e.currentTarget;
+    targetCard.classList.remove('drag-target-above', 'drag-target-below');
+
+    const srcId = e.dataTransfer.getData('text/x-card-id');
+    const destId = targetCard.dataset.fileId;
+    if (!srcId || srcId === destId) return;
+
+    const srcIdx = fileList.findIndex(f => f.id === srcId);
+    let destIdx = fileList.findIndex(f => f.id === destId);
+    if (srcIdx === -1 || destIdx === -1) return;
+
+    const rect = targetCard.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    if (e.clientY > midY) destIdx++;
+
+    // Move item
+    const [item] = fileList.splice(srcIdx, 1);
+    if (destIdx > srcIdx) destIdx--;
+    fileList.splice(destIdx, 0, item);
+
+    renderFileQueue();
+}
+
+function onCardDragEnd(e) {
+    isInternalDrag = false;
+    e.currentTarget.classList.remove('dragging');
+    document.querySelectorAll('.file-card').forEach(c => {
+        c.classList.remove('drag-target-above', 'drag-target-below');
+    });
+    dragSrcId = null;
+}
+
+
+// ===================== OPEN IN EDITOR =====================
+function openInEditor(id) {
+    const file = fileList.find(f => f.id === id);
+    if (!file || !file.content) return;
+
+    activeFileId = id;
+    editor.value = file.content;
+    charCount.textContent = `${editor.value.length} chars`;
+    document.getElementById('editor-filename').textContent = file.name;
+
+    // Highlight active card
+    document.querySelectorAll('.file-card').forEach(c => c.classList.remove('active'));
+    const card = fileQueue.querySelector(`[data-file-id="${id}"]`);
+    if (card) card.classList.add('active');
+
+    switchView('editor');
+    updatePreview();
+}
+
+
+// ===================== SINGLE & BATCH CONVERSION =====================
+async function convertSingle(id) {
+    const file = fileList.find(f => f.id === id);
+    if (!file || !file.content) return;
+
+    file.status = 'converting';
+    updateFileCard(file);
+
+    try {
+        const blob = await generatePdfBlobFromContent(file.content, file.name);
+        downloadBlob(blob, stripExt(file.name) + '.pdf');
+        file.status = 'done';
+        showStatus(`"${file.name}" converted!`, 'success');
+    } catch(e) {
+        file.status = 'error';
+        showStatus(`Error converting "${file.name}"`, 'error');
+    }
+    updateFileCard(file);
+}
+
+async function previewSingle(id) {
+    const file = fileList.find(f => f.id === id);
+    if (!file || !file.content) return;
+
+    showStatus(`Generating preview of "${file.name}"...`, 'loading');
+    try {
+        const blob = await generatePdfBlobFromContent(file.content, file.name);
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        showStatus('PDF opened in new tab!', 'success');
+    } catch(e) {
+        showStatus('Error generating preview', 'error');
+    }
+}
+
+async function convertAll() {
+    const readyFiles = fileList.filter(f => f.content && f.status !== 'converting');
+    if (readyFiles.length === 0) {
+        showStatus('No files to convert', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('convert-all-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Converting...';
+    batchProgress.classList.add('active');
+
+    let converted = 0;
+    for (const file of readyFiles) {
+        file.status = 'converting';
+        updateFileCard(file);
+        batchProgressBar.style.width = `${(converted / readyFiles.length) * 100}%`;
+
+        try {
+            const blob = await generatePdfBlobFromContent(file.content, file.name);
+            downloadBlob(blob, stripExt(file.name) + '.pdf');
+            file.status = 'done';
+        } catch(e) {
+            file.status = 'error';
+        }
+        updateFileCard(file);
+        converted++;
+        batchProgressBar.style.width = `${(converted / readyFiles.length) * 100}%`;
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '&#9889; Convert All';
+    showStatus(`${converted} file(s) converted!`, 'success');
+
+    setTimeout(() => {
+        batchProgress.classList.remove('active');
+        batchProgressBar.style.width = '0%';
+    }, 2000);
+}
+
+function getPresetSettings() {
+    return {
+        page_width: document.getElementById('preset-width').value,
+        margin: document.getElementById('preset-margin').value,
+    };
+}
+
+async function generatePdfBlobFromContent(content, filename) {
+    const settings = getPresetSettings();
+    const formData = new FormData();
+    formData.append('markdown', content);
+    formData.append('filename', stripExt(filename));
+    formData.append('page_width', settings.page_width);
+    formData.append('margin', settings.margin);
+    const resp = await fetch('/api/convert', { method: 'POST', body: formData });
+    if (!resp.ok) throw new Error('Conversion failed');
+    return await resp.blob();
+}
+
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+
+// ===================== EDITOR: Export/Preview current file =====================
+async function exportCurrentPdf() {
+    if (!editor.value.trim()) { showStatus('Nothing to export', 'error'); return; }
+
+    const btn = document.getElementById('export-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Generating...';
+    showStatus('Generating PDF...', 'loading');
+
+    try {
+        const blob = await generatePdfBlobFromContent(editor.value, document.getElementById('editor-filename').textContent || 'document');
+        downloadBlob(blob, stripExt(document.getElementById('editor-filename').textContent || 'document') + '.pdf');
+        showStatus('PDF generated successfully!', 'success');
+
+        // Update file content if editing a queued file
+        if (activeFileId) {
+            const file = fileList.find(f => f.id === activeFileId);
+            if (file) {
+                file.content = editor.value;
+                file.status = 'done';
+                updateFileCard(file);
+            }
+        }
+    } catch (e) {
+        showStatus('Error generating PDF: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '&#128196; Export PDF';
+    }
+}
+
+async function previewCurrentPdf() {
+    if (!editor.value.trim()) { showStatus('Nothing to preview', 'error'); return; }
+
+    const btn = document.getElementById('preview-pdf-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Generating...';
+    showStatus('Generating preview...', 'loading');
+
+    try {
+        const blob = await generatePdfBlobFromContent(editor.value, 'preview');
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        showStatus('PDF opened in new tab!', 'success');
+    } catch (e) {
+        showStatus('Error generating PDF: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '&#128065; Preview PDF';
+    }
+}
+
+
+// ===================== LIVE PREVIEW =====================
+editor.addEventListener('input', () => {
+    charCount.textContent = `${editor.value.length} chars`;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(updatePreview, 400);
+
+    // Sync changes back to file list
+    if (activeFileId) {
+        const file = fileList.find(f => f.id === activeFileId);
+        if (file) file.content = editor.value;
+    }
+});
+
+async function updatePreview() {
+    if (!editor.value.trim()) {
+        preview.innerHTML = '<p style="color:var(--text-muted)">Preview will appear here...</p>';
+        previewStatus.textContent = 'Waiting...';
+        return;
+    }
+    previewStatus.textContent = 'Rendering...';
+
+    try {
+        const resp = await fetch('/api/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'markdown=' + encodeURIComponent(editor.value),
+        });
+        const data = await resp.json();
+        preview.innerHTML = data.html;
+
+        await mermaid.run({ nodes: preview.querySelectorAll('.mermaid') });
+        preview.querySelectorAll('pre code').forEach(el => {
+            el.removeAttribute('data-highlighted');
+            hljs.highlightElement(el);
+        });
+
+        previewStatus.textContent = 'Updated';
+    } catch (e) {
+        previewStatus.textContent = 'Preview error';
+    }
+}
+
+
+// ===================== FILE INPUT =====================
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        addFiles(e.target.files);
+        if (currentView !== 'files') switchView('files');
+    }
+    fileInput.value = ''; // Reset so same files can be re-added
+});
+
+
+// ===================== DROP ZONE (local) =====================
+dropZone.addEventListener('dragover', (e) => {
+    if (isInternalDrag) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', (e) => {
+    e.stopPropagation();
+    dropZone.classList.remove('drag-over');
+});
+dropZone.addEventListener('drop', (e) => {
+    if (isInternalDrag) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.remove('drag-over');
+    dragCounter = 0;
+    dropOverlay.classList.remove('active');
+    if (e.dataTransfer.files.length > 0) {
+        addFiles(e.dataTransfer.files);
+    }
+});
+dropZone.addEventListener('click', () => {
+    fileInput.click();
+});
+
+
+// ===================== GLOBAL DRAG & DROP =====================
+let dragCounter = 0;
+
+function isExternalFileDrag(e) {
+    // Only treat as external file drag if it has Files type AND isn't our internal card drag
+    return !isInternalDrag && e.dataTransfer && e.dataTransfer.types &&
+           (e.dataTransfer.types.indexOf('Files') !== -1 || e.dataTransfer.types.includes('Files'));
+}
+
+document.addEventListener('dragenter', (e) => {
+    if (isInternalDrag) return;
+    e.preventDefault();
+    dragCounter++;
+    if (isExternalFileDrag(e)) {
+        dropOverlay.classList.add('active');
+    }
+});
+
+document.addEventListener('dragover', (e) => {
+    if (isInternalDrag) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+});
+
+document.addEventListener('dragleave', (e) => {
+    if (isInternalDrag) return;
+    dragCounter--;
+    if (dragCounter <= 0) {
+        dragCounter = 0;
+        dropOverlay.classList.remove('active');
+    }
+});
+
+document.addEventListener('drop', (e) => {
+    if (isInternalDrag) return;
+    e.preventDefault();
+    dragCounter = 0;
+    dropOverlay.classList.remove('active');
+
+    if (e.dataTransfer.files.length > 0) {
+        addFiles(e.dataTransfer.files);
+        if (currentView !== 'files') switchView('files');
+    }
+});
+
+// Drop overlay itself should handle drops (it covers the entire page)
+dropOverlay.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+});
+
+dropOverlay.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter = 0;
+    dropOverlay.classList.remove('active');
+
+    if (e.dataTransfer.files.length > 0) {
+        addFiles(e.dataTransfer.files);
+        if (currentView !== 'files') switchView('files');
+    }
+});
+
+
+// ===================== STATUS TOAST =====================
+function showStatus(msg, type) {
+    statusEl.textContent = msg;
+    statusEl.className = 'status show ' + type;
+    setTimeout(() => statusEl.classList.remove('show'), 3000);
+}
+
+
+// ===================== KEYBOARD SHORTCUTS =====================
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (currentView === 'editor') {
+            exportCurrentPdf();
+        } else if (fileList.length > 0) {
+            convertAll();
+        }
+    }
+    // Escape goes back to files view
+    if (e.key === 'Escape' && currentView === 'editor') {
+        switchView('files');
+    }
+});
+</script>
+</body>
+</html>

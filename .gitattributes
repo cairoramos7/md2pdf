@@ -1,0 +1,2 @@
+# Force LF line endings for all text files (critical for Docker/Linux)
+* text=auto eol=lf

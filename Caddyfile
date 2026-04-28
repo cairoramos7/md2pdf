@@ -1,0 +1,28 @@
+# =============================================================================
+# Caddyfile — Automatic HTTPS for md2pdf
+# =============================================================================
+# Replace "md2pdf.yourdomain.com" with your actual domain.
+# Caddy automatically obtains and renews TLS certificates via Let's Encrypt.
+#
+# To use: uncomment the "caddy" block in docker-compose.yml
+# =============================================================================
+
+md2pdf.yourdomain.com {
+    reverse_proxy md2pdf:8050
+
+    # Compression (improves response time for HTML/JSON)
+    encode gzip zstd
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    # Upload size limit (markdown + files)
+    request_body {
+        max_size 10MB
+    }
+}

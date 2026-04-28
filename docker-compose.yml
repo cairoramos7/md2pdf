@@ -1,0 +1,73 @@
+# =============================================================================
+# md2pdf — Docker Compose (VPS deployment)
+# =============================================================================
+#
+# Usage:
+#   docker compose up -d --build        # Build and start
+#   docker compose logs -f md2pdf       # Follow logs
+#   docker compose down                 # Stop everything
+#
+# To use with Traefik, uncomment the labels below and set your domain.
+# To use with Caddy, see the commented caddy block.
+# =============================================================================
+
+services:
+  md2pdf:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: md2pdf
+    restart: unless-stopped
+    ports:
+      - "${MD2PDF_PORT:-8050}:8050"
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Resource limits — Chromium can be memory-hungry
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
+    # Intermediate PDF temp files — use tmpfs for performance
+    tmpfs:
+      - /tmp:size=256M
+
+    # -------------------------------------------------------------------------
+    # Traefik reverse proxy (uncomment if using Traefik)
+    # -------------------------------------------------------------------------
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.md2pdf.rule=Host(`md2pdf.yourdomain.com`)"
+    #   - "traefik.http.routers.md2pdf.entrypoints=websecure"
+    #   - "traefik.http.routers.md2pdf.tls.certresolver=letsencrypt"
+    #   - "traefik.http.services.md2pdf.loadbalancer.server.port=8050"
+    # networks:
+    #   - traefik-public
+
+  # ---------------------------------------------------------------------------
+  # Caddy reverse proxy (uncomment for automatic HTTPS without Traefik)
+  # ---------------------------------------------------------------------------
+  # caddy:
+  #   image: caddy:2-alpine
+  #   container_name: md2pdf-caddy
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile:ro
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   depends_on:
+  #     - md2pdf
+
+# networks:
+#   traefik-public:
+#     external: true
+
+# volumes:
+#   caddy_data:
+#   caddy_config:
