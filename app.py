@@ -8,6 +8,7 @@ Usage:
     python app.py --port 9000        # Custom port
     python app.py --host 0.0.0.0     # Expose on network (for server)
 """
+import html as html_mod
 import re
 import os
 import uuid
@@ -68,6 +69,34 @@ def md_to_html(md_text):
         return f"\n\n{key}\n\n"
     text = re.sub(r"```mermaid\s*\n(.*?)```", save_mermaid, text, flags=re.DOTALL)
 
+    # --- PHASE 1b: Extract indented fenced code blocks ---
+    # python-markdown's fenced_code extension does NOT recognise ``` fences
+    # that are indented (e.g. inside a list item or blockquote).  They end up
+    # rendered as inline <code> — collapsing multi-line content to one line.
+    # We extract them here and restore after markdown processing, just like
+    # we do for Mermaid blocks.
+    def save_indented_fence(m):
+        lang = (m.group(2) or "").strip()
+        code = m.group(3)
+        # De-indent the code body: remove the same leading whitespace that
+        # the fence itself had.
+        indent = m.group(1)
+        if indent:
+            code = re.sub(r"^" + re.escape(indent), "", code, flags=re.MULTILINE)
+        code = code.rstrip("\n")
+        escaped = html_mod.escape(code)
+        lang_attr = f' class="language-{lang}"' if lang else ""
+        key = f"FENCEDCODE{uuid.uuid4().hex}"
+        placeholders[key] = f'<pre><code{lang_attr}>{escaped}\n</code></pre>'
+        return f"\n\n{key}\n\n"
+
+    # Match fenced code blocks that start with 1+ spaces of indentation.
+    # The regex captures: (indent)(```lang\n)(content)(indent```\n)
+    text = re.sub(
+        r"^([ \t]+)```(\w*)\s*\n(.*?)^\1```\s*$",
+        save_indented_fence, text, flags=re.DOTALL | re.MULTILINE,
+    )
+
     # --- PHASE 2: Convert Obsidian callouts ---
     def callout_block(m):
         ctype = m.group(1).lower()
@@ -96,10 +125,54 @@ def md_to_html(md_text):
         callout_block, text, flags=re.IGNORECASE,
     )
 
+    # --- PHASE 2b: Convert plain blockquotes to styled HTML ---
+    # After callouts have been extracted, remaining `>` blocks are plain
+    # blockquotes.  We convert them into styled HTML divs so they render
+    # with proper line breaks and visual polish in the PDF.
+    def plain_blockquote(m):
+        raw = m.group(0)
+        lines = raw.split("\n")
+        # Strip the leading `> ` or `>` from each line
+        cleaned = []
+        for line in lines:
+            stripped = re.sub(r"^>\s?", "", line)
+            cleaned.append(stripped)
+
+        # Group consecutive non-empty lines into paragraphs,
+        # preserving explicit blank-line paragraph breaks.
+        paragraphs = []
+        current = []
+        for line in cleaned:
+            if line.strip() == "":
+                if current:
+                    paragraphs.append(current)
+                    current = []
+            else:
+                current.append(line)
+        if current:
+            paragraphs.append(current)
+
+        # Render each paragraph group through markdown, then join
+        body_parts = []
+        for para_lines in paragraphs:
+            body_parts.append(_md("\n".join(para_lines)))
+        body_html = "\n".join(body_parts)
+
+        key = f"BLOCKQUOTE{uuid.uuid4().hex}"
+        placeholders[key] = (
+            f'<blockquote class="styled-quote">'
+            f'{body_html}'
+            f'</blockquote>'
+        )
+        return f"\n\n{key}\n\n"
+
+    # Match contiguous blocks of lines starting with `>`
+    text = re.sub(
+        r"(?:^>.*$\n?)+",
+        plain_blockquote, text, flags=re.MULTILINE,
+    )
+
     # --- PHASE 3: Pre-process extra extensions ---
-    # Obsidian-style blockquotes: each > line gets a separate break
-    # (standard markdown joins everything into a single paragraph)
-    text = re.sub(r"^(>.*\S)\s*$", r"\1  ", text, flags=re.MULTILINE)
 
     # Task lists (unicode checkboxes for clean PDF rendering)
     text = re.sub(r"^(\s*)- \[ \]\s*", "\\1- ☐ ", text, flags=re.MULTILINE)
@@ -153,17 +226,16 @@ def get_pdf_style(margin_preset="normal"):
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 html, body {{ height: auto !important; min-height: 0 !important; }}
 
-@page {{ margin: 0; size: auto; }}
+@page {{ margin: 0; }}
 
-/* Prevent page breaks — we generate a single continuous page */
-* {{ break-inside: auto; }}
-pre, blockquote, table, .mermaid, .callout {{
-    break-inside: avoid;
-    page-break-inside: avoid;
-}}
-h1, h2, h3, h4, h5, h6 {{
-    break-after: avoid;
-    page-break-after: avoid;
+/* Single continuous page — disable ALL page breaks */
+* {{
+    break-inside: auto !important;
+    break-before: auto !important;
+    break-after: auto !important;
+    page-break-inside: auto !important;
+    page-break-before: auto !important;
+    page-break-after: auto !important;
 }}
 
 body {{
@@ -193,17 +265,49 @@ li {{ margin: 4px 0; }}
 li > ul, li > ol {{ margin: 2px 0 2px 20px; }}
 
 table {{ width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.82em; line-height: 1.4; }}
-th, td {{ border: 1px solid #e2e8f0; padding: 5px 8px; text-align: left; }}
+th, td {{ border: 1px solid #e2e8f0; padding: 5px 8px; text-align: left; word-break: break-word; }}
 th {{ background: #f8fafc; font-weight: 600; color: #1e293b; }}
 tr:nth-child(even) td {{ background: #fafbfc; }}
 
-pre {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; overflow-x: auto; margin: 12px 0; line-height: 1.5; }}
+pre {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; overflow-x: hidden; overflow-wrap: break-word; word-break: break-all; white-space: pre-wrap; margin: 12px 0; line-height: 1.5; }}
 code {{ font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace; font-size: 0.87em; }}
 p code, li code, td code {{ background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #be185d; font-size: 0.85em; }}
 pre code.hljs {{ padding: 0; background: transparent; }}
 
-blockquote {{ border-left: 4px solid #6366f1; background: #eef2ff; padding: 12px 16px; margin: 14px 0; border-radius: 0 6px 6px 0; color: #3730a3; }}
-blockquote p {{ margin: 4px 0; }}
+blockquote {{
+    border-left: 4px solid #6366f1;
+    background: linear-gradient(135deg, #eef2ff 0%, #e8eaff 100%);
+    padding: 16px 20px 16px 24px;
+    margin: 16px 0;
+    border-radius: 0 8px 8px 0;
+    color: #3730a3;
+    font-style: italic;
+    position: relative;
+}}
+blockquote::before {{
+    content: '\201C';
+    font-size: 2.8em;
+    color: #a5b4fc;
+    position: absolute;
+    top: -4px;
+    left: 6px;
+    line-height: 1;
+    font-family: Georgia, 'Times New Roman', serif;
+}}
+blockquote p {{
+    margin: 6px 0;
+    padding-left: 16px;
+}}
+blockquote p:first-child {{ margin-top: 0; }}
+blockquote p:last-child {{ margin-bottom: 0; }}
+/* Nested blockquotes */
+blockquote blockquote {{
+    border-left-color: #818cf8;
+    background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
+    margin: 10px 0;
+    font-size: 0.95em;
+}}
+blockquote blockquote::before {{ content: none; }}
 
 hr {{ border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }}
 img {{ max-width: 100%; height: auto; border-radius: 4px; }}
@@ -285,9 +389,10 @@ async def html_to_pdf_bytes(html_content, width_preset="a4"):
             await page.wait_for_timeout(200)
 
             # Measure actual rendered content height.
-            # Uses getBoundingClientRect on #content + body padding for
-            # sub-pixel accuracy. scrollHeight can round and cause
-            # an extra blank page.
+            # We use multiple strategies and take the maximum to be safe:
+            # 1. getBoundingClientRect on #content + body padding
+            # 2. body.scrollHeight
+            # This guards against print-media reflow differences.
             content_height_px = await page.evaluate("""() => {
                 // Remove empty elements at the end of content
                 const content = document.getElementById('content');
@@ -301,22 +406,22 @@ async def html_to_pdf_bytes(html_content, width_preset="a4"):
                     }
                 }
 
-                // getBoundingClientRect.bottom = distance from viewport top
-                // to the end of #content (already includes body paddingTop).
-                // Add body paddingBottom to complete the spacing.
                 const rect = content.getBoundingClientRect();
                 const bodyStyle = getComputedStyle(document.body);
                 const paddingBottom = parseFloat(bodyStyle.paddingBottom) || 0;
-                return Math.ceil(rect.bottom + paddingBottom);
+                const rectHeight = Math.ceil(rect.bottom + paddingBottom);
+                const scrollHeight = document.body.scrollHeight;
+
+                return Math.max(rectHeight, scrollHeight);
             }""")
 
             # Convert height from viewport pixels to mm using the same
             # width ratio (e.g.: 794px = 210mm), avoiding mismatch
             # between screen pixel measurement and print mm rendering.
-            # +2mm safety margin — doesn't affect result since it's a single page.
+            # Add 5% safety margin to account for print-media reflow.
             pdf_width_mm = float(wp["pdf_width"].replace("mm", ""))
             mm_per_px = pdf_width_mm / wp["viewport_px"]
-            content_height_mm = (content_height_px * mm_per_px) + 2
+            content_height_mm = (content_height_px * mm_per_px) * 1.05
 
             await page.pdf(
                 path=pdf_path,
