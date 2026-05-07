@@ -277,26 +277,14 @@ pre code.hljs {{ padding: 0; background: transparent; }}
 blockquote {{
     border-left: 4px solid #6366f1;
     background: linear-gradient(135deg, #eef2ff 0%, #e8eaff 100%);
-    padding: 16px 20px 16px 24px;
+    padding: 14px 20px;
     margin: 16px 0;
     border-radius: 0 8px 8px 0;
     color: #3730a3;
     font-style: italic;
-    position: relative;
-}}
-blockquote::before {{
-    content: '\201C';
-    font-size: 2.8em;
-    color: #a5b4fc;
-    position: absolute;
-    top: -4px;
-    left: 6px;
-    line-height: 1;
-    font-family: Georgia, 'Times New Roman', serif;
 }}
 blockquote p {{
     margin: 6px 0;
-    padding-left: 16px;
 }}
 blockquote p:first-child {{ margin-top: 0; }}
 blockquote p:last-child {{ margin-bottom: 0; }}
@@ -307,7 +295,6 @@ blockquote blockquote {{
     margin: 10px 0;
     font-size: 0.95em;
 }}
-blockquote blockquote::before {{ content: none; }}
 
 hr {{ border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }}
 img {{ max-width: 100%; height: auto; border-radius: 4px; }}
