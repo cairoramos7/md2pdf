@@ -6,7 +6,11 @@
 <title>md2pdf - Markdown to PDF</title>
 <meta name="description" content="Convert Markdown to PDF with Mermaid, syntax highlighting and more.">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  window.mermaid = mermaid;
+  mermaid.initialize({ startOnLoad: false, theme: 'default' });
+</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <style>
@@ -658,6 +662,26 @@ textarea::placeholder { color: var(--text-muted); }
         </div>
     </div>
     <div class="actions" id="header-actions">
+        <div class="settings-group">
+            <span class="settings-label">&#128207; Width</span>
+            <select class="preset-select" id="preset-width">
+                <option value="a4" selected>A4 (210mm)</option>
+                <option value="letter">Letter (216mm)</option>
+                <option value="wide">Wide (280mm)</option>
+                <option value="compact">Compact (170mm)</option>
+            </select>
+        </div>
+        <div class="settings-divider"></div>
+        <div class="settings-group">
+            <span class="settings-label">&#8614; Margin</span>
+            <select class="preset-select" id="preset-margin">
+                <option value="none">None</option>
+                <option value="tight">Tight</option>
+                <option value="normal" selected>Normal</option>
+                <option value="wide">Wide</option>
+            </select>
+        </div>
+        <div class="settings-divider"></div>
         <label class="btn" for="file-input" id="upload-btn">
             &#128206; Upload .md
             <input type="file" id="file-input" accept=".md,.markdown,.txt" multiple style="display:none">
@@ -681,29 +705,6 @@ textarea::placeholder { color: var(--text-muted); }
                 or <span class="accent" onclick="document.getElementById('file-input').click()">browse your computer</span>
                 &nbsp;&middot;&nbsp; Supports multiple files
             </div>
-        </div>
-
-        <div class="settings-bar" id="settings-bar">
-            <div class="settings-group">
-                <span class="settings-label">&#128207; Width</span>
-                <select class="preset-select" id="preset-width">
-                    <option value="a4" selected>A4 (210mm)</option>
-                    <option value="letter">Letter (216mm)</option>
-                    <option value="wide">Wide (280mm)</option>
-                    <option value="compact">Compact (170mm)</option>
-                </select>
-            </div>
-            <div class="settings-divider"></div>
-            <div class="settings-group">
-                <span class="settings-label">&#8614; Margin</span>
-                <select class="preset-select" id="preset-margin">
-                    <option value="none">None</option>
-                    <option value="tight">Tight</option>
-                    <option value="normal" selected>Normal</option>
-                    <option value="wide">Wide</option>
-                </select>
-            </div>
-            <span class="settings-hint">Applied when exporting PDF</span>
         </div>
 
         <div class="batch-progress" id="batch-progress">
@@ -765,7 +766,6 @@ textarea::placeholder { color: var(--text-muted); }
 <div class="status" id="status"></div>
 
 <script>
-mermaid.initialize({ startOnLoad: false, theme: 'default' });
 
 // ===================== DOM REFS =====================
 const editor = document.getElementById('editor');

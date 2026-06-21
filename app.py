@@ -48,7 +48,7 @@ CALLOUT_ICONS = {
 
 CALLOUT_TYPES_RE = "|".join(CALLOUT_COLORS.keys())
 
-MD_EXTENSIONS = ["tables", "fenced_code", "sane_lists", "footnotes", "attr_list", "def_list"]
+MD_EXTENSIONS = ["tables", "fenced_code", "sane_lists", "footnotes", "attr_list", "def_list", "nl2br"]
 
 
 def _md(text):
@@ -313,7 +313,11 @@ def wrap_for_pdf(body_html, title, margin_preset="normal"):
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="UTF-8"><title>{title}</title>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  window.mermaid = mermaid;
+  mermaid.initialize({{ startOnLoad: true, theme: 'default' }});
+</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <style>{style}</style>
@@ -321,7 +325,6 @@ def wrap_for_pdf(body_html, title, margin_preset="normal"):
 <body>
 <div id="content">{body_html}</div>
 <script>
-mermaid.initialize({{ startOnLoad: true, theme: 'default' }});
 hljs.highlightAll();
 </script>
 </body></html>"""
