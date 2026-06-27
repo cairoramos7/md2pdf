@@ -308,15 +308,31 @@ dd {{ margin-left: 24px; margin-bottom: 8px; }}
 """
 
 
-def wrap_for_pdf(body_html, title, margin_preset="normal"):
+def wrap_for_pdf(body_html, title, margin_preset="normal", mermaid_layout="adaptive"):
     style = get_pdf_style(margin_preset)
+    
+    # CSS dinâmico para Mermaid no PDF
+    if mermaid_layout == "hierarchical":
+        style += """
+        .mermaid { overflow-x: auto; }
+        .mermaid svg { max-width: none !important; }
+        """
+    else:
+        style += """
+        .mermaid svg { max-width: 100% !important; height: auto !important; }
+        """
+
+    renderer = 'dagre' if mermaid_layout == 'hierarchical' else 'elk'
+
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="UTF-8"><title>{title}</title>
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.2/dist/mermaid-layout-elk.esm.min.mjs';
+  mermaid.registerLayoutLoaders(elkLayouts);
   window.mermaid = mermaid;
-  mermaid.initialize({{ startOnLoad: true, theme: 'default' }});
+  mermaid.initialize({{ startOnLoad: true, theme: 'default', flowchart: {{ defaultRenderer: '{renderer}' }} }});
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -374,8 +390,8 @@ async def html_to_pdf_bytes(html_content, width_preset="a4"):
 
             await page.wait_for_timeout(400)
 
-            # Emulate print media for accurate measurement
-            await page.emulate_media(media='print')
+            # Emulate print media and force light color scheme to prevent Mermaid rendering dark boxes
+            await page.emulate_media(media='print', color_scheme='light')
             await page.wait_for_timeout(200)
 
             # Measure actual rendered content height.
@@ -455,6 +471,7 @@ async def convert_markdown(
     filename: str = Form("document"),
     page_width: str = Form("a4"),
     margin: str = Form("normal"),
+    mermaid_layout: str = Form("adaptive"),
 ):
     """Converts markdown (upload or text) to PDF."""
     if file:
@@ -476,7 +493,7 @@ async def convert_markdown(
 
     title = _extract_title(content, filename)
     body = md_to_html(content)
-    full_html = wrap_for_pdf(body, title, margin_preset=margin)
+    full_html = wrap_for_pdf(body, title, margin_preset=margin, mermaid_layout=mermaid_layout)
     pdf_bytes = await html_to_pdf_bytes(full_html, width_preset=page_width)
 
     # Save temp with unique name to avoid collision

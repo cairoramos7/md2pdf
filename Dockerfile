@@ -14,6 +14,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 # Build tools that will NOT end up in the final image
+RUN echo "Acquire::http::Pipeline-Depth 0;" > /etc/apt/apt.conf.d/99custom && \
+    echo "Acquire::http::No-Cache true;" >> /etc/apt/apt.conf.d/99custom && \
+    echo "Acquire::BrokenProxy true;" >> /etc/apt/apt.conf.d/99custom
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
@@ -43,6 +47,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
 
 # Chromium runtime dependencies (no build tools)
+RUN echo "Acquire::http::Pipeline-Depth 0;" > /etc/apt/apt.conf.d/99custom && \
+    echo "Acquire::http::No-Cache true;" >> /etc/apt/apt.conf.d/99custom && \
+    echo "Acquire::BrokenProxy true;" >> /etc/apt/apt.conf.d/99custom
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libnss3 \
     libnspr4 \
