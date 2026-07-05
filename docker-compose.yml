@@ -13,13 +13,9 @@
 
 services:
   md2pdf:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/cairoramos7/md2pdf:latest
     container_name: md2pdf
     restart: unless-stopped
-    ports:
-      - "${MD2PDF_PORT:-8050}:8050"
     environment:
       - PYTHONUNBUFFERED=1
     # Resource limits — Chromium can be memory-hungry
@@ -36,38 +32,19 @@ services:
       - /tmp:size=256M
 
     # -------------------------------------------------------------------------
-    # Traefik reverse proxy (uncomment if using Traefik)
+    # Traefik reverse proxy configuration
     # -------------------------------------------------------------------------
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.md2pdf.rule=Host(`md2pdf.yourdomain.com`)"
-    #   - "traefik.http.routers.md2pdf.entrypoints=websecure"
-    #   - "traefik.http.routers.md2pdf.tls.certresolver=letsencrypt"
-    #   - "traefik.http.services.md2pdf.loadbalancer.server.port=8050"
-    # networks:
-    #   - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.md2pdf.rule=Host(`md2pdf.13.140.156.100.nip.io`)"
+      - "traefik.http.routers.md2pdf.entrypoints=https"
+      - "traefik.http.routers.md2pdf.tls=true"
+      - "traefik.http.routers.md2pdf.tls.certresolver=letsencrypt"
+      - "traefik.http.services.md2pdf.loadbalancer.server.port=8050"
+    networks:
+      - maze-network
 
-  # ---------------------------------------------------------------------------
-  # Caddy reverse proxy (uncomment for automatic HTTPS without Traefik)
-  # ---------------------------------------------------------------------------
-  # caddy:
-  #   image: caddy:2-alpine
-  #   container_name: md2pdf-caddy
-  #   restart: unless-stopped
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   volumes:
-  #     - ./Caddyfile:/etc/caddy/Caddyfile:ro
-  #     - caddy_data:/data
-  #     - caddy_config:/config
-  #   depends_on:
-  #     - md2pdf
-
-# networks:
-#   traefik-public:
-#     external: true
-
-# volumes:
-#   caddy_data:
-#   caddy_config:
+networks:
+  maze-network:
+    name: mazedelivery_maze-network
+    external: true
