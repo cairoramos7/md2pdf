@@ -1,11 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>md2pdf - Markdown to PDF</title>
 <meta name="description" content="Convert Markdown to PDF with Mermaid, syntax highlighting and more.">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- daisyUI 5 + Tailwind v4 (CDN, no build step) -->
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @theme { --font-sans: "Poppins", -apple-system, "Segoe UI", sans-serif; }
+</style>
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
   import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.2/dist/mermaid-layout-elk.esm.min.mjs';
@@ -43,10 +49,37 @@
     --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ===== daisyUI theme override — mantém a identidade md2pdf (roxo + navy) ===== */
+[data-theme="dark"] {
+    --color-base-100: #12122a;
+    --color-base-200: #1c1c3a;
+    --color-base-300: #2a2a55;
+    --color-base-content: #e0e0f0;
+    --color-primary: #6c63ff;
+    --color-primary-content: #ffffff;
+    --color-secondary: #a78bfa;
+    --color-secondary-content: #1a1030;
+    --color-accent: #6c63ff;
+    --color-accent-content: #ffffff;
+    --color-neutral: #1c1c3a;
+    --color-neutral-content: #e0e0f0;
+    --color-info: #6c63ff;
+    --color-info-content: #ffffff;
+    --color-success: #34d399;
+    --color-success-content: #064e3b;
+    --color-warning: #fbbf24;
+    --color-warning-content: #451a03;
+    --color-error: #f87171;
+    --color-error-content: #450a0a;
+    --radius-field: 8px;
+    --radius-box: 10px;
+    --radius-selector: 6px;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-    font-family: 'Inter', -apple-system, sans-serif;
+    font-family: 'Poppins', -apple-system, sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
@@ -93,7 +126,7 @@ body {
     border: none;
     background: transparent;
     color: var(--text-muted);
-    font-family: 'Inter', sans-serif;
+    font-family: 'Poppins', sans-serif;
     font-size: 0.78em;
     font-weight: 500;
     cursor: pointer;
@@ -112,51 +145,9 @@ body {
     gap: 8px;
     align-items: center;
 }
-.btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 7px 16px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--surface-2);
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.8em;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition);
-    white-space: nowrap;
-}
-.btn:hover { background: var(--surface-3); border-color: var(--border-hover); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-.btn-primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: white;
-}
-.btn-primary:hover {
-    background: var(--accent-hover);
-    box-shadow: 0 4px 20px var(--accent-glow);
-}
-.btn-success {
-    background: var(--success);
-    border-color: var(--success);
-    color: #064e3b;
-    font-weight: 600;
-}
-.btn-success:hover {
-    background: #4ade80;
-    box-shadow: 0 4px 20px rgba(52, 211, 153, 0.3);
-}
-.btn-sm {
-    padding: 5px 10px;
-    font-size: 0.72em;
-    border-radius: 6px;
-}
-.btn-icon {
-    padding: 6px 8px;
-    font-size: 0.85em;
-    border-radius: 6px;
-}
-.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+/* Botões agora usam daisyUI (.btn / .btn-primary / .btn-success / .btn-sm).
+   Só mantemos o helper de botão-ícone quadrado usado nos cards de arquivo. */
+.btn-icon { padding-left: 0.5rem; padding-right: 0.5rem; }
 
 /* ===== Main Content Area ===== */
 .main-content {
@@ -255,16 +246,7 @@ body {
     align-items: center;
     gap: 8px;
 }
-.file-count-badge {
-    background: var(--accent);
-    color: white;
-    font-size: 0.75em;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-weight: 600;
-    min-width: 22px;
-    text-align: center;
-}
+/* file-count-badge agora usa daisyUI (.badge). */
 .file-queue-actions {
     display: flex;
     gap: 6px;
@@ -587,35 +569,8 @@ textarea::placeholder { color: var(--text-muted); }
     background: var(--border);
 }
 
-.preset-select {
-    appearance: none;
-    background: var(--surface-3);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 32px 6px 12px;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.8em;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237878a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-}
-.preset-select:hover {
-    border-color: var(--accent);
-    background-color: var(--surface-2);
-}
-.preset-select:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px var(--accent-glow);
-}
-.preset-select option {
-    background: var(--surface);
-    color: var(--text);
-}
+/* Selects de preset usam daisyUI (.select); largura consistente no header. */
+.settings-group .select { min-width: 8.5rem; }
 
 .settings-hint {
     font-size: 0.7em;
@@ -676,7 +631,7 @@ textarea::placeholder { color: var(--text-muted); }
     <div class="actions" id="header-actions">
         <div class="settings-group">
             <span class="settings-label">&#128207; Width</span>
-            <select class="preset-select" id="preset-width">
+            <select class="select select-sm" id="preset-width">
                 <option value="a4" selected>A4 (210mm)</option>
                 <option value="letter">Letter (216mm)</option>
                 <option value="wide">Wide (280mm)</option>
@@ -686,7 +641,7 @@ textarea::placeholder { color: var(--text-muted); }
         <div class="settings-divider"></div>
         <div class="settings-group">
             <span class="settings-label">&#8614; Margin</span>
-            <select class="preset-select" id="preset-margin">
+            <select class="select select-sm" id="preset-margin">
                 <option value="none">None</option>
                 <option value="tight">Tight</option>
                 <option value="normal" selected>Normal</option>
@@ -696,20 +651,20 @@ textarea::placeholder { color: var(--text-muted); }
         <div class="settings-divider"></div>
         <div class="settings-group">
             <span class="settings-label">&#129521; Mermaid</span>
-            <select class="preset-select" id="preset-mermaid">
+            <select class="select select-sm" id="preset-mermaid">
                 <option value="adaptive" selected>Adaptive</option>
                 <option value="hierarchical">Hierarchical</option>
             </select>
         </div>
         <div class="settings-divider"></div>
-        <label class="btn" for="file-input" id="upload-btn">
+        <label class="btn btn-sm" for="file-input" id="upload-btn">
             &#128206; Upload .md
             <input type="file" id="file-input" accept=".md,.markdown,.txt" multiple style="display:none">
         </label>
-        <button class="btn" id="preview-pdf-btn" onclick="previewCurrentPdf()" style="display:none;">
+        <button class="btn btn-sm btn-ghost" id="preview-pdf-btn" onclick="previewCurrentPdf()" style="display:none;">
             &#128065; Visualizar PDF
         </button>
-        <button class="btn btn-primary" id="export-btn" onclick="exportCurrentPdf()" style="display:none;">
+        <button class="btn btn-sm btn-primary" id="export-btn" onclick="exportCurrentPdf()" style="display:none;">
             &#128196; Exportar PDF
         </button>
     </div>
@@ -735,7 +690,7 @@ textarea::placeholder { color: var(--text-muted); }
             <div class="file-queue-header" id="file-queue-header" style="display:none;">
                 <span class="file-queue-label">
                     File Queue
-                    <span class="file-count-badge" id="file-count-badge">0</span>
+                    <span class="badge badge-primary badge-sm" id="file-count-badge">0</span>
                 </span>
                 <div class="file-queue-actions">
                     <button class="btn btn-sm" onclick="clearAllFiles()" id="clear-all-btn">
@@ -897,6 +852,26 @@ function stripExt(name) {
     const idx = name.lastIndexOf('.');
     return idx > 0 ? name.substring(0, idx) : name;
 }
+
+// Deriva um nome de arquivo seguro a partir da 1ª linha não-vazia do conteúdo.
+// Resultado contém apenas [a-z0-9_-] (acentos são transliterados).
+function slugifyFilename(content, fallback = 'document') {
+    const firstLine = (content || '').split('\n').find(l => l.trim()) || '';
+    let s = firstLine.trim()
+        .normalize('NFKD').replace(/[̀-ͯ]/g, '')  // remove acentos
+        .toLowerCase()
+        .replace(/[^a-z0-9_]+/g, '-')   // mantém underscore; resto vira traço
+        .replace(/-{2,}/g, '-')
+        .replace(/^[-_]+|[-_]+$/g, '')
+        .slice(0, 80)
+        .replace(/^[-_]+|[-_]+$/g, '');
+    return s || slugifyFilename.fallbackSlug(fallback);
+}
+slugifyFilename.fallbackSlug = function (fallback) {
+    const s = (fallback || '').normalize('NFKD').replace(/[̀-ͯ]/g, '')
+        .toLowerCase().replace(/[^a-z0-9_]+/g, '-').replace(/-{2,}/g, '-').replace(/^[-_]+|[-_]+$/g, '');
+    return s || 'document';
+};
 
 function getFirstLines(content, n = 2) {
     if (!content) return 'Loading...';
@@ -1080,7 +1055,7 @@ async function convertSingle(id) {
 
     try {
         const blob = await generatePdfBlobFromContent(file.content, file.name);
-        downloadBlob(blob, stripExt(file.name) + '.pdf');
+        downloadBlob(blob, slugifyFilename(file.content, stripExt(file.name)) + '.pdf');
         file.status = 'done';
         showStatus(`"${file.name}" converted!`, 'success');
     } catch(e) {
@@ -1126,7 +1101,7 @@ async function convertAll() {
 
         try {
             const blob = await generatePdfBlobFromContent(file.content, file.name);
-            downloadBlob(blob, stripExt(file.name) + '.pdf');
+            downloadBlob(blob, slugifyFilename(file.content, stripExt(file.name)) + '.pdf');
             file.status = 'done';
         } catch(e) {
             file.status = 'error';
@@ -1188,7 +1163,7 @@ async function exportCurrentPdf() {
 
     try {
         const blob = await generatePdfBlobFromContent(editor.value, document.getElementById('editor-filename').textContent || 'document');
-        downloadBlob(blob, stripExt(document.getElementById('editor-filename').textContent || 'document') + '.pdf');
+        downloadBlob(blob, slugifyFilename(editor.value, stripExt(document.getElementById('editor-filename').textContent || 'document')) + '.pdf');
         showStatus('PDF generated successfully!', 'success');
 
         // Update file content if editing a queued file

@@ -13,6 +13,7 @@ import re
 import os
 import uuid
 import tempfile
+import unicodedata
 from pathlib import Path
 
 import markdown
@@ -460,6 +461,39 @@ def _extract_title(md_text, fallback="document"):
     return fallback.replace("-", " ").replace("_", " ").title()
 
 
+def _first_non_empty_line(md_text):
+    """Return the first non-empty line of the text (stripped), or ''."""
+    for line in md_text.splitlines():
+        if line.strip():
+            return line.strip()
+    return ""
+
+
+def slugify_filename(text, fallback="document", max_len=80):
+    """Slugify text into a safe filename: only [a-z0-9_-].
+
+    - Transliterates accents (á -> a, ç -> c, ...)
+    - Lowercases
+    - Keeps underscores; turns any other run of non-alphanumerics into a dash
+    - Collapses repeated dashes and trims leading/trailing separators
+    """
+    # Strip accents/diacritics down to ASCII
+    text = unicodedata.normalize("NFKD", text or "")
+    text = text.encode("ascii", "ignore").decode("ascii")
+    text = text.lower()
+    # Keep [a-z0-9_]; everything else becomes a dash
+    text = re.sub(r"[^a-z0-9_]+", "-", text)
+    text = re.sub(r"-{2,}", "-", text)
+    text = text.strip("-_")
+    text = text[:max_len].strip("-_")
+    return text or fallback
+
+
+def build_output_name(content, fallback="document"):
+    """Derive a safe filename from the first non-empty line of the content."""
+    return slugify_filename(_first_non_empty_line(content), fallback=slugify_filename(fallback, "document"))
+
+
 # ---------------------------------------------------------------------------
 # API Routes
 # ---------------------------------------------------------------------------
@@ -496,8 +530,9 @@ async def convert_markdown(
     full_html = wrap_for_pdf(body, title, margin_preset=margin, mermaid_layout=mermaid_layout)
     pdf_bytes = await html_to_pdf_bytes(full_html, width_preset=page_width)
 
-    # Save temp with unique name to avoid collision
-    safe_filename = re.sub(r'[^\w\-.]', '_', filename)
+    # Filename comes from the first non-empty line of the content,
+    # sanitized to [a-z0-9_-]. Falls back to the provided filename.
+    safe_filename = build_output_name(content, fallback=filename)
     out_path = os.path.join(tempfile.gettempdir(), f"{safe_filename}_{uuid.uuid4().hex[:8]}.pdf")
     with open(out_path, "wb") as f:
         f.write(pdf_bytes)
