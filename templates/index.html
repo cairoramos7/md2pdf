@@ -163,6 +163,15 @@ body {
     overflow: hidden;
 }
 
+/* ===== HISTORY VIEW ===== */
+.history-view {
+    height: 100%;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+}
+.history-view .file-queue-wrapper { padding-top: 20px; }
+
 /* Drop Zone */
 .drop-zone {
     position: relative;
@@ -626,6 +635,9 @@ textarea::placeholder { color: var(--text-muted); }
             <button class="view-tab" data-view="editor" id="tab-editor" onclick="switchView('editor')">
                 &#9998; Editor
             </button>
+            <button class="view-tab" data-view="history" id="tab-history" onclick="switchView('history')">
+                &#128340; Histórico
+            </button>
         </div>
     </div>
     <div class="actions" id="header-actions">
@@ -727,6 +739,29 @@ textarea::placeholder { color: var(--text-muted); }
             <div class="preview-content" id="preview"></div>
         </div>
     </div>
+
+    <!-- ===== HISTORY VIEW ===== -->
+    <div class="history-view" id="history-view">
+        <div class="file-queue-wrapper">
+            <div class="file-queue-header" id="history-header">
+                <span class="file-queue-label">
+                    Histórico de conversões
+                    <span class="badge badge-primary badge-sm" id="history-count-badge">0</span>
+                </span>
+                <div class="file-queue-actions">
+                    <button class="btn btn-sm" onclick="clearHistory()" id="clear-history-btn">
+                        &#128465; Limpar histórico
+                    </button>
+                </div>
+            </div>
+            <div class="file-queue" id="history-list">
+                <div class="file-queue-empty" id="history-empty">
+                    <span>&#128340;</span>
+                    <span>Nenhuma conversão no histórico ainda</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Global drop overlay (appears when dragging anywhere) -->
@@ -765,12 +800,14 @@ let currentView = 'files';
 let debounceTimer = null;
 let dragSrcId = null;
 let fileIdCounter = 0;
+let history = [];   // histórico persistido no localStorage (ver seção PERSISTÊNCIA)
 
 
 // ===================== VIEW SWITCHING =====================
 function switchView(view) {
     currentView = view;
     document.getElementById('files-view').style.display = view === 'files' ? 'flex' : 'none';
+    document.getElementById('history-view').style.display = view === 'history' ? 'flex' : 'none';
     const ev = document.getElementById('editor-view');
     if (view === 'editor') {
         ev.style.display = 'grid';
@@ -783,7 +820,7 @@ function switchView(view) {
     document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
     document.getElementById('tab-' + view).classList.add('active');
 
-    // Toggle header buttons
+    // Toggle header buttons (preview/export only make sense in the editor)
     const previewBtn = document.getElementById('preview-pdf-btn');
     const exportBtn = document.getElementById('export-btn');
     if (view === 'editor') {
@@ -793,6 +830,8 @@ function switchView(view) {
         previewBtn.style.display = 'none';
         exportBtn.style.display = 'none';
     }
+
+    if (view === 'history') renderHistory();
 }
 
 
@@ -1055,7 +1094,9 @@ async function convertSingle(id) {
 
     try {
         const blob = await generatePdfBlobFromContent(file.content, file.name);
-        downloadBlob(blob, slugifyFilename(file.content, stripExt(file.name)) + '.pdf');
+        const outName = slugifyFilename(file.content, stripExt(file.name));
+        downloadBlob(blob, outName + '.pdf');
+        addToHistory(outName, file.content, getPresetSettings());
         file.status = 'done';
         showStatus(`"${file.name}" converted!`, 'success');
     } catch(e) {
@@ -1101,7 +1142,9 @@ async function convertAll() {
 
         try {
             const blob = await generatePdfBlobFromContent(file.content, file.name);
-            downloadBlob(blob, slugifyFilename(file.content, stripExt(file.name)) + '.pdf');
+            const outName = slugifyFilename(file.content, stripExt(file.name));
+            downloadBlob(blob, outName + '.pdf');
+            addToHistory(outName, file.content, getPresetSettings());
             file.status = 'done';
         } catch(e) {
             file.status = 'error';
@@ -1162,8 +1205,11 @@ async function exportCurrentPdf() {
     showStatus('Generating PDF...', 'loading');
 
     try {
-        const blob = await generatePdfBlobFromContent(editor.value, document.getElementById('editor-filename').textContent || 'document');
-        downloadBlob(blob, slugifyFilename(editor.value, stripExt(document.getElementById('editor-filename').textContent || 'document')) + '.pdf');
+        const fallbackName = stripExt(document.getElementById('editor-filename').textContent || 'document');
+        const blob = await generatePdfBlobFromContent(editor.value, fallbackName);
+        const outName = slugifyFilename(editor.value, fallbackName);
+        downloadBlob(blob, outName + '.pdf');
+        addToHistory(outName, editor.value, getPresetSettings());
         showStatus('PDF generated successfully!', 'success');
 
         // Update file content if editing a queued file
@@ -1395,16 +1441,153 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// ===================== PERSISTÊNCIA (localStorage) =====================
+const LS_SETTINGS = 'md2pdf:settings';
+const LS_HISTORY = 'md2pdf:history';
+const HISTORY_LIMIT = 30;
+
+function escapeHtml(s) {
+    return (s || '').replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+// --- Settings (width / margin / mermaid) ---
+function saveSettings() {
+    try { localStorage.setItem(LS_SETTINGS, JSON.stringify(getPresetSettings())); }
+    catch (e) { /* localStorage indisponível/quota */ }
+}
+function loadSettings() {
+    try {
+        const raw = localStorage.getItem(LS_SETTINGS);
+        if (!raw) return;
+        const s = JSON.parse(raw) || {};
+        if (s.page_width) document.getElementById('preset-width').value = s.page_width;
+        if (s.margin) document.getElementById('preset-margin').value = s.margin;
+        if (s.mermaid_layout) document.getElementById('preset-mermaid').value = s.mermaid_layout;
+    } catch (e) { /* ignora settings corrompidos */ }
+}
+
+// --- Histórico ---
+function loadHistory() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
+        history = Array.isArray(parsed) ? parsed : [];
+    } catch (e) { history = []; }
+}
+function saveHistory() {
+    try { localStorage.setItem(LS_HISTORY, JSON.stringify(history)); }
+    catch (e) { /* quota — histórico não persiste, mas app segue */ }
+}
+function addToHistory(name, content, settings) {
+    const firstLine = (content || '').split('\n').find(l => l.trim()) || name;
+    const entry = {
+        id: 'h-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+        name: name,                              // slug (sem extensão)
+        title: firstLine.trim().slice(0, 120),
+        size: (content || '').length,
+        settings: settings || getPresetSettings(),
+        content: content || '',
+        ts: Date.now(),
+    };
+    history.unshift(entry);
+    if (history.length > HISTORY_LIMIT) history = history.slice(0, HISTORY_LIMIT);
+    saveHistory();
+    renderHistory();
+}
+function renderHistory() {
+    const listEl = document.getElementById('history-list');
+    const emptyEl = document.getElementById('history-empty');
+    const badge = document.getElementById('history-count-badge');
+    if (!listEl) return;
+    badge.textContent = history.length;
+    listEl.querySelectorAll('.file-card').forEach(c => c.remove());
+    emptyEl.style.display = history.length ? 'none' : 'flex';
+
+    history.forEach(h => {
+        const set = h.settings || {};
+        const when = new Date(h.ts).toLocaleString('pt-BR');
+        const card = document.createElement('div');
+        card.className = 'file-card';
+        card.dataset.histId = h.id;
+        card.innerHTML = `
+            <div class="file-card-icon">&#128196;</div>
+            <div class="file-card-info">
+                <div class="file-card-name">${escapeHtml(h.title)}</div>
+                <div class="file-card-meta">
+                    <span>${when}</span>
+                    <span>${escapeHtml(h.name)}.pdf</span>
+                    <span>${escapeHtml(set.page_width || '')} &middot; ${escapeHtml(set.margin || '')}</span>
+                </div>
+            </div>
+            <div class="file-card-actions">
+                <button class="btn btn-icon btn-sm" onclick="event.stopPropagation(); openHistoryInEditor('${h.id}')" title="Abrir no editor">&#9998;</button>
+                <button class="btn btn-icon btn-sm" onclick="event.stopPropagation(); reexportHistory('${h.id}')" title="Exportar novamente">&#128196;</button>
+                <button class="btn btn-icon btn-sm" onclick="event.stopPropagation(); removeHistoryItem('${h.id}')" title="Remover" style="color:var(--danger);">&times;</button>
+            </div>
+        `;
+        card.addEventListener('click', () => openHistoryInEditor(h.id));
+        listEl.insertBefore(card, emptyEl);
+    });
+}
+function applyHistorySettings(h) {
+    const s = h.settings || {};
+    if (s.page_width) document.getElementById('preset-width').value = s.page_width;
+    if (s.margin) document.getElementById('preset-margin').value = s.margin;
+    if (s.mermaid_layout) document.getElementById('preset-mermaid').value = s.mermaid_layout;
+    saveSettings();
+}
+function openHistoryInEditor(id) {
+    const h = history.find(x => x.id === id);
+    if (!h) return;
+    applyHistorySettings(h);
+    activeFileId = null;
+    editor.value = h.content;
+    charCount.textContent = `${editor.value.length} chars`;
+    document.getElementById('editor-filename').textContent = h.name;
+    switchView('editor');
+    updatePreview();
+}
+async function reexportHistory(id) {
+    const h = history.find(x => x.id === id);
+    if (!h) return;
+    applyHistorySettings(h);
+    showStatus(`Gerando "${h.name}.pdf"...`, 'loading');
+    try {
+        const blob = await generatePdfBlobFromContent(h.content, h.name);
+        downloadBlob(blob, slugifyFilename(h.content, h.name) + '.pdf');
+        showStatus('PDF gerado novamente!', 'success');
+    } catch (e) {
+        showStatus('Erro ao gerar PDF', 'error');
+    }
+}
+function removeHistoryItem(id) {
+    history = history.filter(x => x.id !== id);
+    saveHistory();
+    renderHistory();
+}
+function clearHistory() {
+    if (!history.length) return;
+    history = [];
+    saveHistory();
+    renderHistory();
+    showStatus('Histórico limpo', 'success');
+}
+
+
 // ===================== SETTINGS LISTENERS =====================
-document.getElementById('preset-mermaid').addEventListener('change', () => {
-    updatePreview();
+['preset-mermaid', 'preset-width', 'preset-margin'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+        saveSettings();   // persiste width/margin/mermaid
+        updatePreview();
+    });
 });
-document.getElementById('preset-width').addEventListener('change', () => {
-    updatePreview();
-});
-document.getElementById('preset-margin').addEventListener('change', () => {
-    updatePreview();
-});
+
+
+// ===================== INIT =====================
+loadSettings();
+loadHistory();
+renderHistory();
 </script>
 </body>
 </html>
