@@ -352,6 +352,10 @@ label:focus-visible,
     padding-inline-start: 0.875rem;
     padding-inline-end: 2.25rem; /* respiro antes do chevron */
 }
+.settings-group .input {
+    width: 9.5rem;
+    padding-inline: 0.875rem;
+}
 .settings-hint {
     font-size: 0.72rem;
     color: var(--text-muted);
@@ -631,6 +635,30 @@ label:focus-visible,
 
 .editor-panel { border-right: 1px solid var(--border); }
 
+/* Nome editável do PDF exportado (header do editor) */
+.editor-filename-wrap {
+    display: inline-flex;
+    align-items: baseline;
+    margin-left: 8px;
+    text-transform: none;
+    letter-spacing: normal;
+}
+#editor-filename {
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--border-hover);
+    color: var(--accent-text);
+    font: inherit;
+    font-weight: 600;
+    padding: 0 2px;
+    max-width: 30ch;
+    cursor: text;
+    transition: border-color var(--transition);
+}
+#editor-filename:hover { border-bottom-color: var(--accent-text); }
+#editor-filename::placeholder { color: var(--text-muted); font-weight: 500; }
+.editor-filename-ext { color: var(--text-muted); font-weight: 500; }
+
 textarea {
     flex: 1;
     background: var(--bg);
@@ -720,25 +748,43 @@ textarea::placeholder { color: var(--text-muted); }
     50% { box-shadow: var(--shadow-lg), 0 0 0 12px transparent; }
 }
 
-/* ===== Status Toast ===== */
-.status {
+/* ===== Status Toast =====
+   NOTA: não usar a classe "status" — colide com o componente .status
+   do daisyUI 5 (dot indicador), que esmaga o balão. */
+.toast-status {
     position: fixed;
     bottom: 20px;
     right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: min(380px, calc(100vw - 40px));
     padding: 12px 22px;
     border-radius: 10px;
     font-size: 0.83em;
     font-weight: 500;
-    transform: translateY(100px);
-    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* esconde 100% da própria altura + offset — nunca fica espiando no canto */
+    transform: translateY(calc(100% + 40px));
+    opacity: 0;
+    visibility: hidden;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.25s ease,
+                visibility 0s linear 0.35s;
     z-index: 2000;
     box-shadow: var(--shadow-lg);
     backdrop-filter: blur(8px);
 }
-.status.show { transform: translateY(0); }
-.status.success { background: rgba(52, 211, 153, 0.97); color: #064E3B; }
-.status.error { background: rgba(248, 113, 113, 0.97); color: #450A0A; }
-.status.loading { background: var(--accent); color: var(--accent-content); }
+.toast-status.show {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.2s ease;
+}
+/* Tipos prefixados com t- para não colidir com .loading/.status do daisyUI */
+.toast-status.t-success { background: rgba(52, 211, 153, 0.97); color: #064E3B; }
+.toast-status.t-error { background: rgba(248, 113, 113, 0.97); color: #450A0A; }
+.toast-status.t-loading { background: var(--accent); color: var(--accent-content); }
 
 /* ===== Spinner ===== */
 /* 1em acompanha o tamanho da fonte do botão (não fica maior que o texto) */
@@ -870,10 +916,13 @@ textarea::placeholder { color: var(--text-muted); }
     <div class="settings-group">
         <label class="settings-label" for="preset-width">Largura</label>
         <select class="select select-sm" id="preset-width">
+            <option value="a5">A5 (148mm)</option>
+            <option value="compact">Compacta (170mm)</option>
             <option value="a4" selected>A4 (210mm)</option>
             <option value="letter">Carta (216mm)</option>
             <option value="wide">Larga (280mm)</option>
-            <option value="compact">Compacta (170mm)</option>
+            <option value="a3">A3 (297mm)</option>
+            <option value="ultrawide">Ultra-larga (320mm)</option>
         </select>
     </div>
     <div class="settings-divider"></div>
@@ -881,9 +930,12 @@ textarea::placeholder { color: var(--text-muted); }
         <label class="settings-label" for="preset-margin">Margem</label>
         <select class="select select-sm" id="preset-margin">
             <option value="none">Nenhuma</option>
-            <option value="tight">Estreita</option>
-            <option value="normal" selected>Normal</option>
-            <option value="wide">Ampla</option>
+            <option value="minimal">M&iacute;nima (3mm)</option>
+            <option value="tight">Estreita (5mm)</option>
+            <option value="normal" selected>Normal (10mm)</option>
+            <option value="comfortable">Confort&aacute;vel (12mm)</option>
+            <option value="wide">Ampla (15mm)</option>
+            <option value="extra">Extra (20mm)</option>
         </select>
     </div>
     <div class="settings-divider"></div>
@@ -893,6 +945,27 @@ textarea::placeholder { color: var(--text-muted); }
             <option value="adaptive" selected>Adaptativo</option>
             <option value="hierarchical">Hier&aacute;rquico</option>
         </select>
+    </div>
+    <div class="settings-divider"></div>
+    <div class="settings-group">
+        <label class="settings-label" for="preset-font">Fonte</label>
+        <select class="select select-sm" id="preset-font">
+            <option value="default" selected>Padr&atilde;o (Segoe UI)</option>
+            <option value="inter">Inter</option>
+            <option value="roboto">Roboto</option>
+            <option value="open-sans">Open Sans</option>
+            <option value="ubuntu">Ubuntu</option>
+            <option value="lora">Lora (serif)</option>
+            <option value="source-serif">Source Serif 4</option>
+            <option value="merriweather">Merriweather (serif)</option>
+        </select>
+    </div>
+    <div class="settings-divider"></div>
+    <div class="settings-group">
+        <label class="settings-label" for="preset-watermark">Marca d'&aacute;gua</label>
+        <input type="text" class="input input-sm" id="preset-watermark"
+               placeholder="opcional" maxlength="60"
+               title="Texto repetido em diagonal no fundo do PDF">
     </div>
     <span class="settings-hint">
         <kbd class="kbd kbd-xs">Ctrl</kbd>+<kbd class="kbd kbd-xs">S</kbd> exporta
@@ -945,7 +1018,15 @@ textarea::placeholder { color: var(--text-muted); }
     <div class="editor-view" id="editor-view">
         <div class="panel editor-panel">
             <div class="panel-header">
-                <span><span class="dot dot-green"></span>Editor <span id="editor-filename" style="color:var(--accent-text);margin-left:6px;font-weight:600;text-transform:none;"></span></span>
+                <span style="display:flex;align-items:baseline;">
+                    <span class="dot dot-green"></span>Editor
+                    <span class="editor-filename-wrap">
+                        <input id="editor-filename" type="text" size="9" spellcheck="false"
+                               placeholder="documento" aria-label="Nome do arquivo PDF exportado"
+                               title="Clique para editar o nome do PDF exportado">
+                        <span class="editor-filename-ext">.pdf</span>
+                    </span>
+                </span>
                 <span id="char-count">0 caracteres</span>
             </div>
             <textarea id="editor" aria-label="Conte&uacute;do Markdown" placeholder="Cole ou digite seu Markdown aqui...&#10;&#10;Ou arraste um arquivo .md para esta &aacute;rea."></textarea>
@@ -992,13 +1073,14 @@ textarea::placeholder { color: var(--text-muted); }
     </div>
 </div>
 
-<div class="status" id="status" role="status" aria-live="polite"></div>
+<div class="toast-status" id="status" role="status" aria-live="polite"></div>
 
 <script>
 
 // ===================== DOM REFS =====================
 const editor = document.getElementById('editor');
 const preview = document.getElementById('preview');
+const editorFilename = document.getElementById('editor-filename');
 const charCount = document.getElementById('char-count');
 const previewStatus = document.getElementById('preview-status');
 const statusEl = document.getElementById('status');
@@ -1020,6 +1102,40 @@ let debounceTimer = null;
 let dragSrcId = null;
 let fileIdCounter = 0;
 let history = [];   // histórico persistido no localStorage (ver seção PERSISTÊNCIA)
+let filenameTouched = false;  // usuário editou manualmente o nome do PDF
+
+
+// ===================== NOME DO PDF (editável) =====================
+function fitFilenameInput() {
+    editorFilename.size = Math.max(9, Math.min(30, editorFilename.value.length + 1));
+}
+
+// Se o usuário não personalizou, deriva o nome da 1ª linha do conteúdo
+function setAutoFilename() {
+    if (filenameTouched) return;
+    editorFilename.value = editor.value.trim() ? slugifyFilename(editor.value, 'documento') : '';
+    fitFilenameInput();
+}
+
+editorFilename.addEventListener('input', () => {
+    filenameTouched = editorFilename.value.trim().length > 0;
+    if (!filenameTouched) setAutoFilename();
+    fitFilenameInput();
+});
+// Ao sair do campo, normaliza para o slug que será realmente usado
+editorFilename.addEventListener('change', () => {
+    if (editorFilename.value.trim()) {
+        editorFilename.value = slugifyFilename.fallbackSlug(editorFilename.value);
+        fitFilenameInput();
+    }
+});
+editorFilename.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();  // Escape aqui só sai do campo, não troca de view
+        editorFilename.blur();
+    }
+});
 
 
 // ===================== VIEW SWITCHING =====================
@@ -1291,7 +1407,9 @@ function openInEditor(id) {
     activeFileId = id;
     editor.value = file.content;
     charCount.textContent = `${editor.value.length} caracteres`;
-    document.getElementById('editor-filename').textContent = file.name;
+    filenameTouched = false;
+    editorFilename.value = slugifyFilename(file.content, stripExt(file.name));
+    fitFilenameInput();
 
     // Highlight active card
     document.querySelectorAll('.file-card').forEach(c => c.classList.remove('active'));
@@ -1388,6 +1506,8 @@ function getPresetSettings() {
         page_width: document.getElementById('preset-width').value,
         margin: document.getElementById('preset-margin').value,
         mermaid_layout: document.getElementById('preset-mermaid').value,
+        font: document.getElementById('preset-font').value,
+        watermark: document.getElementById('preset-watermark').value.trim(),
     };
 }
 
@@ -1399,6 +1519,8 @@ async function generatePdfBlobFromContent(content, filename) {
     formData.append('page_width', settings.page_width);
     formData.append('margin', settings.margin);
     formData.append('mermaid_layout', settings.mermaid_layout);
+    formData.append('font', settings.font);
+    formData.append('watermark', settings.watermark);
     const resp = await fetch('/api/convert', { method: 'POST', body: formData });
     if (!resp.ok) throw new Error('Conversion failed');
     return await resp.blob();
@@ -1424,9 +1546,12 @@ async function exportCurrentPdf() {
     showStatus('Gerando PDF...', 'loading');
 
     try {
-        const fallbackName = stripExt(document.getElementById('editor-filename').textContent || 'document');
-        const blob = await generatePdfBlobFromContent(editor.value, fallbackName);
-        const outName = slugifyFilename(editor.value, fallbackName);
+        // Nome personalizado no campo tem prioridade; senão deriva da 1ª linha
+        const customName = editorFilename.value.trim();
+        const outName = customName
+            ? slugifyFilename.fallbackSlug(customName)
+            : slugifyFilename(editor.value, 'documento');
+        const blob = await generatePdfBlobFromContent(editor.value, outName);
         downloadBlob(blob, outName + '.pdf');
         addToHistory(outName, editor.value, getPresetSettings());
         showStatus('PDF gerado com sucesso!', 'success');
@@ -1474,6 +1599,7 @@ async function previewCurrentPdf() {
 // ===================== LIVE PREVIEW =====================
 editor.addEventListener('input', () => {
     charCount.textContent = `${editor.value.length} caracteres`;
+    setAutoFilename();
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(updatePreview, 400);
 
@@ -1645,8 +1771,9 @@ dropOverlay.addEventListener('drop', (e) => {
 
 // ===================== STATUS TOAST =====================
 function showStatus(msg, type) {
-    statusEl.textContent = msg;
-    statusEl.className = 'status show ' + type;
+    // Loading ganha um spinner dentro do próprio toast
+    statusEl.innerHTML = (type === 'loading' ? '<span class="spinner"></span>' : '') + escapeHtml(msg);
+    statusEl.className = 'toast-status show t-' + type;
     setTimeout(() => statusEl.classList.remove('show'), 3000);
 }
 
@@ -1709,6 +1836,8 @@ function loadSettings() {
         if (s.page_width) document.getElementById('preset-width').value = s.page_width;
         if (s.margin) document.getElementById('preset-margin').value = s.margin;
         if (s.mermaid_layout) document.getElementById('preset-mermaid').value = s.mermaid_layout;
+        if (s.font) document.getElementById('preset-font').value = s.font;
+        if (typeof s.watermark === 'string') document.getElementById('preset-watermark').value = s.watermark;
     } catch (e) { /* ignora settings corrompidos */ }
 }
 
@@ -1779,6 +1908,8 @@ function applyHistorySettings(h) {
     if (s.page_width) document.getElementById('preset-width').value = s.page_width;
     if (s.margin) document.getElementById('preset-margin').value = s.margin;
     if (s.mermaid_layout) document.getElementById('preset-mermaid').value = s.mermaid_layout;
+    if (s.font) document.getElementById('preset-font').value = s.font;
+    if (typeof s.watermark === 'string') document.getElementById('preset-watermark').value = s.watermark;
     saveSettings();
 }
 function openHistoryInEditor(id) {
@@ -1788,7 +1919,9 @@ function openHistoryInEditor(id) {
     activeFileId = null;
     editor.value = h.content;
     charCount.textContent = `${editor.value.length} caracteres`;
-    document.getElementById('editor-filename').textContent = h.name;
+    filenameTouched = true;  // preserva o nome com que foi exportado
+    editorFilename.value = h.name;
+    fitFilenameInput();
     switchView('editor');
     updatePreview();
 }
@@ -1820,7 +1953,7 @@ function clearHistory() {
 
 
 // ===================== SETTINGS LISTENERS =====================
-['preset-mermaid', 'preset-width', 'preset-margin'].forEach(id => {
+['preset-mermaid', 'preset-width', 'preset-margin', 'preset-font', 'preset-watermark'].forEach(id => {
     document.getElementById(id).addEventListener('change', () => {
         saveSettings();   // persiste width/margin/mermaid
         updatePreview();
