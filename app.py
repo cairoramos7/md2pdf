@@ -204,18 +204,25 @@ def md_to_html(md_text):
 # Presets for page width and margins
 # ---------------------------------------------------------------------------
 
+# viewport_px = mm * (794 / 210) — mesma densidade do A4 em todas as larguras
 WIDTH_PRESETS = {
-    "a4":      {"css_width": "100%", "pdf_width": "210mm",  "viewport_px": 794},
-    "letter":  {"css_width": "100%", "pdf_width": "216mm",  "viewport_px": 816},
-    "wide":    {"css_width": "100%", "pdf_width": "280mm",  "viewport_px": 1058},
-    "compact": {"css_width": "100%", "pdf_width": "170mm",  "viewport_px": 643},
+    "a5":        {"css_width": "100%", "pdf_width": "148mm",  "viewport_px": 560},
+    "compact":   {"css_width": "100%", "pdf_width": "170mm",  "viewport_px": 643},
+    "a4":        {"css_width": "100%", "pdf_width": "210mm",  "viewport_px": 794},
+    "letter":    {"css_width": "100%", "pdf_width": "216mm",  "viewport_px": 816},
+    "wide":      {"css_width": "100%", "pdf_width": "280mm",  "viewport_px": 1058},
+    "a3":        {"css_width": "100%", "pdf_width": "297mm",  "viewport_px": 1123},
+    "ultrawide": {"css_width": "100%", "pdf_width": "320mm",  "viewport_px": 1210},
 }
 
 MARGIN_PRESETS = {
-    "none":   {"top": "0",    "right": "0",    "bottom": "0",   "left": "0"},
-    "tight":  {"top": "5mm",  "right": "10mm", "bottom": "3mm", "left": "10mm"},
-    "normal": {"top": "10mm", "right": "18mm", "bottom": "5mm", "left": "18mm"},
-    "wide":   {"top": "15mm", "right": "28mm", "bottom": "10mm", "left": "28mm"},
+    "none":        {"top": "0",    "right": "0",    "bottom": "0",    "left": "0"},
+    "minimal":     {"top": "3mm",  "right": "5mm",  "bottom": "3mm",  "left": "5mm"},
+    "tight":       {"top": "5mm",  "right": "10mm", "bottom": "3mm",  "left": "10mm"},
+    "normal":      {"top": "10mm", "right": "18mm", "bottom": "5mm",  "left": "18mm"},
+    "comfortable": {"top": "12mm", "right": "22mm", "bottom": "8mm",  "left": "22mm"},
+    "wide":        {"top": "15mm", "right": "28mm", "bottom": "10mm", "left": "28mm"},
+    "extra":       {"top": "20mm", "right": "35mm", "bottom": "15mm", "left": "35mm"},
 }
 
 # Fontes do corpo do PDF. "default" mantém a pilha de sistema atual;
@@ -263,40 +270,39 @@ body {{
     padding: {padding};
 }}
 
-h1 {{ font-size: 1.85em; margin: 28px 0 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; color: #0f172a; font-weight: 700; }}
-h2 {{ font-size: 1.45em; margin: 24px 0 12px; color: #1e293b; font-weight: 600; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }}
-h3 {{ font-size: 1.2em; margin: 20px 0 10px; color: #334155; font-weight: 600; }}
-h4 {{ font-size: 1.05em; margin: 16px 0 8px; color: #475569; font-weight: 600; }}
-h5, h6 {{ font-size: 0.95em; margin: 12px 0 6px; color: #64748b; font-weight: 600; }}
+h1 {{ font-size: 1.85em; margin: 28px 0 14px; border-bottom: 2px solid #E7E5E4; padding-bottom: 8px; color: #0C0A09; font-weight: 700; }}
+h2 {{ font-size: 1.45em; margin: 24px 0 12px; color: #1C1917; font-weight: 600; border-bottom: 1px solid #F5F5F4; padding-bottom: 5px; }}
+h3 {{ font-size: 1.2em; margin: 20px 0 10px; color: #44403C; font-weight: 600; }}
+h4 {{ font-size: 1.05em; margin: 16px 0 8px; color: #57534E; font-weight: 600; }}
+h5, h6 {{ font-size: 0.95em; margin: 12px 0 6px; color: #78716C; font-weight: 600; }}
 
 p {{ margin: 8px 0; }}
-a {{ color: #2563eb; text-decoration: none; border-bottom: 1px solid #93c5fd; }}
-strong {{ font-weight: 600; color: #0f172a; }}
-del {{ text-decoration: line-through; color: #94a3b8; }}
-mark {{ background: #fef08a; padding: 1px 4px; border-radius: 2px; }}
+a {{ color: #92400E; text-decoration: none; border-bottom: 1px solid rgba(146,64,14,0.30); }}
+strong {{ font-weight: 600; color: #0C0A09; }}
+del {{ text-decoration: line-through; color: #78716C; }}
+mark {{ background: #FEF3C7; color: #713F12; padding: 1px 4px; border-radius: 2px; }}
 
 ul, ol {{ margin: 8px 0 8px 24px; }}
 li {{ margin: 4px 0; }}
 li > ul, li > ol {{ margin: 2px 0 2px 20px; }}
 
 table {{ width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.82em; line-height: 1.4; }}
-th, td {{ border: 1px solid #e2e8f0; padding: 5px 8px; text-align: left; word-break: break-word; }}
-th {{ background: #f8fafc; font-weight: 600; color: #1e293b; }}
-tr:nth-child(even) td {{ background: #fafbfc; }}
+th, td {{ border: 1px solid #E7E5E4; padding: 5px 8px; text-align: left; word-break: break-word; }}
+th {{ background: #F5F5F4; font-weight: 600; color: #1C1917; }}
+tr:nth-child(even) td {{ background: #FAFAF9; }}
 
-pre {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; overflow-x: hidden; overflow-wrap: break-word; word-break: break-all; white-space: pre-wrap; margin: 12px 0; line-height: 1.5; }}
-code {{ font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace; font-size: 0.87em; }}
-p code, li code, td code {{ background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #be185d; font-size: 0.85em; }}
+pre {{ background: #FAFAF9; border: 1px solid #E7E5E4; border-radius: 6px; padding: 14px 16px; overflow-x: hidden; overflow-wrap: break-word; word-break: break-all; white-space: pre-wrap; margin: 12px 0; line-height: 1.5; }}
+code {{ font-family: 'Ubuntu Mono', 'Cascadia Code', Consolas, monospace; font-size: 0.92em; }}
+p code, li code, td code {{ background: #F5F5F4; padding: 2px 6px; border-radius: 4px; color: #9A3412; font-size: 0.9em; }}
 pre code.hljs {{ padding: 0; background: transparent; }}
 
 blockquote {{
-    border-left: 4px solid #6366f1;
-    background: linear-gradient(135deg, #eef2ff 0%, #e8eaff 100%);
+    border-left: 4px solid #D97706;
+    background: #FBF3E7;
     padding: 14px 20px;
     margin: 16px 0;
     border-radius: 0 8px 8px 0;
-    color: #3730a3;
-    font-style: italic;
+    color: #713F12;
 }}
 blockquote p {{
     margin: 6px 0;
@@ -305,21 +311,21 @@ blockquote p:first-child {{ margin-top: 0; }}
 blockquote p:last-child {{ margin-bottom: 0; }}
 /* Nested blockquotes */
 blockquote blockquote {{
-    border-left-color: #818cf8;
-    background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
+    border-left-color: #B45309;
+    background: #F7E9D4;
     margin: 10px 0;
     font-size: 0.95em;
 }}
 
-hr {{ border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }}
+hr {{ border: none; border-top: 1px solid #E7E5E4; margin: 24px 0; }}
 img {{ max-width: 100%; height: auto; border-radius: 4px; }}
 
-.mermaid {{ background: #fafbfc; border-radius: 8px; padding: 20px; margin: 16px 0; text-align: center; border: 1px solid #e2e8f0; }}
+.mermaid {{ background: #FAFAF9; border-radius: 8px; padding: 20px; margin: 16px 0; text-align: center; border: 1px solid #E7E5E4; }}
 
 dt {{ font-weight: 600; margin-top: 12px; }}
 dd {{ margin-left: 24px; margin-bottom: 8px; }}
 
-.footnote {{ font-size: 0.85em; color: #64748b; border-top: 1px solid #e2e8f0; margin-top: 32px; padding-top: 16px; }}
+.footnote {{ font-size: 0.85em; color: #78716C; border-top: 1px solid #E7E5E4; margin-top: 32px; padding-top: 16px; }}
 """
 
 
@@ -352,13 +358,16 @@ def wrap_for_pdf(body_html, title, margin_preset="normal", mermaid_layout="adapt
     font_cfg = FONT_PRESETS.get(font, FONT_PRESETS["default"])
     style = get_pdf_style(margin_preset, font_family=font_cfg["family"])
 
-    font_link = ""
+    # Ubuntu Mono sempre presente (código), + fonte do corpo quando não-padrão
+    gf_families = ["Ubuntu+Mono:wght@400;700"]
     if font_cfg["gf"]:
-        font_link = (
-            '<link rel="preconnect" href="https://fonts.googleapis.com">'
-            '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-            f'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={font_cfg["gf"]}&display=swap">'
-        )
+        gf_families.append(font_cfg["gf"])
+    families = "&".join(f"family={f}" for f in gf_families)
+    font_link = (
+        '<link rel="preconnect" href="https://fonts.googleapis.com">'
+        '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+        f'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?{families}&display=swap">'
+    )
 
     watermark = (watermark or "").strip()
     watermark_div = ""
@@ -390,7 +399,7 @@ def wrap_for_pdf(body_html, title, margin_preset="normal", mermaid_layout="adapt
   window.mermaid = mermaid;
   mermaid.initialize({{ startOnLoad: true, theme: 'default', flowchart: {{ defaultRenderer: '{renderer}' }} }});
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <style>{style}</style>
 </head>
