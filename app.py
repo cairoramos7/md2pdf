@@ -218,11 +218,25 @@ MARGIN_PRESETS = {
     "wide":   {"top": "15mm", "right": "28mm", "bottom": "10mm", "left": "28mm"},
 }
 
+# Fontes do corpo do PDF. "default" mantém a pilha de sistema atual;
+# as demais são carregadas do Google Fonts no HTML renderizado.
+FONT_PRESETS = {
+    "default":      {"gf": None,                            "family": None},
+    "inter":        {"gf": "Inter:wght@400;600;700",        "family": "'Inter', sans-serif"},
+    "roboto":       {"gf": "Roboto:wght@400;500;700",       "family": "'Roboto', sans-serif"},
+    "open-sans":    {"gf": "Open+Sans:wght@400;600;700",    "family": "'Open Sans', sans-serif"},
+    "ubuntu":       {"gf": "Ubuntu:wght@400;500;700",       "family": "'Ubuntu', sans-serif"},
+    "lora":         {"gf": "Lora:wght@400;500;700",         "family": "'Lora', serif"},
+    "source-serif": {"gf": "Source+Serif+4:wght@400;600;700", "family": "'Source Serif 4', serif"},
+    "merriweather": {"gf": "Merriweather:wght@400;700",     "family": "'Merriweather', serif"},
+}
 
-def get_pdf_style(margin_preset="normal"):
-    """Generate PDF CSS with the given margin preset."""
+
+def get_pdf_style(margin_preset="normal", font_family=None):
+    """Generate PDF CSS with the given margin preset and body font."""
     m = MARGIN_PRESETS.get(margin_preset, MARGIN_PRESETS["normal"])
     padding = f"{m['top']} {m['right']} {m['bottom']} {m['left']}"
+    font_stack = font_family or "'Segoe UI', -apple-system, 'Helvetica Neue', Arial, sans-serif"
     return f"""
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 html, body {{ height: auto !important; min-height: 0 !important; }}
@@ -240,7 +254,7 @@ html, body {{ height: auto !important; min-height: 0 !important; }}
 }}
 
 body {{
-    font-family: 'Segoe UI', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-family: {font_stack};
     line-height: 1.75;
     color: #1e293b;
     background: #fff;
@@ -309,9 +323,49 @@ dd {{ margin-left: 24px; margin-bottom: 8px; }}
 """
 
 
-def wrap_for_pdf(body_html, title, margin_preset="normal", mermaid_layout="adaptive"):
-    style = get_pdf_style(margin_preset)
-    
+def _watermark_css(text):
+    """Builds a tiled, rotated SVG watermark as a CSS background overlay."""
+    from urllib.parse import quote
+    esc = html_mod.escape(text[:60])
+    svg = (
+        "<svg xmlns='http://www.w3.org/2000/svg' width='420' height='300'>"
+        "<text x='210' y='150' font-family='Arial, sans-serif' font-size='26' "
+        "fill='#1e293b' fill-opacity='0.07' font-weight='600' text-anchor='middle' "
+        f"transform='rotate(-30 210 150)'>{esc}</text></svg>"
+    )
+    data_uri = "data:image/svg+xml;charset=utf-8," + quote(svg)
+    return f"""
+body {{ position: relative; }}
+#watermark {{
+    position: absolute;
+    inset: 0;
+    z-index: 999;
+    pointer-events: none;
+    background-image: url("{data_uri}");
+    background-repeat: repeat;
+}}
+"""
+
+
+def wrap_for_pdf(body_html, title, margin_preset="normal", mermaid_layout="adaptive",
+                 font="default", watermark=""):
+    font_cfg = FONT_PRESETS.get(font, FONT_PRESETS["default"])
+    style = get_pdf_style(margin_preset, font_family=font_cfg["family"])
+
+    font_link = ""
+    if font_cfg["gf"]:
+        font_link = (
+            '<link rel="preconnect" href="https://fonts.googleapis.com">'
+            '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            f'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={font_cfg["gf"]}&display=swap">'
+        )
+
+    watermark = (watermark or "").strip()
+    watermark_div = ""
+    if watermark:
+        style += _watermark_css(watermark)
+        watermark_div = '<div id="watermark" aria-hidden="true"></div>'
+
     # CSS dinâmico para Mermaid no PDF
     if mermaid_layout == "hierarchical":
         style += """
@@ -328,6 +382,7 @@ def wrap_for_pdf(body_html, title, margin_preset="normal", mermaid_layout="adapt
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="UTF-8"><title>{title}</title>
+{font_link}
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
   import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.2/dist/mermaid-layout-elk.esm.min.mjs';
@@ -341,6 +396,7 @@ def wrap_for_pdf(body_html, title, margin_preset="normal", mermaid_layout="adapt
 </head>
 <body>
 <div id="content">{body_html}</div>
+{watermark_div}
 <script>
 hljs.highlightAll();
 </script>
@@ -373,8 +429,9 @@ async def html_to_pdf_bytes(html_content, width_preset="a4"):
             page = await browser.new_page(viewport={"width": wp["viewport_px"], "height": 10000})
             await page.goto(Path(html_path).as_uri(), wait_until="networkidle")
 
-            # Wait for JS rendering (Mermaid + highlight.js)
+            # Wait for JS rendering (webfonts + Mermaid + highlight.js)
             await page.evaluate("""async () => {
+                if (document.fonts && document.fonts.ready) await document.fonts.ready;
                 if (typeof hljs !== 'undefined') hljs.highlightAll();
 
                 const mermaidDivs = document.querySelectorAll('.mermaid');
@@ -506,6 +563,8 @@ async def convert_markdown(
     page_width: str = Form("a4"),
     margin: str = Form("normal"),
     mermaid_layout: str = Form("adaptive"),
+    font: str = Form("default"),
+    watermark: str = Form(""),
 ):
     """Converts markdown (upload or text) to PDF."""
     if file:
@@ -527,7 +586,8 @@ async def convert_markdown(
 
     title = _extract_title(content, filename)
     body = md_to_html(content)
-    full_html = wrap_for_pdf(body, title, margin_preset=margin, mermaid_layout=mermaid_layout)
+    full_html = wrap_for_pdf(body, title, margin_preset=margin, mermaid_layout=mermaid_layout,
+                             font=font, watermark=watermark)
     pdf_bytes = await html_to_pdf_bytes(full_html, width_preset=page_width)
 
     # Filename comes from the first non-empty line of the content,

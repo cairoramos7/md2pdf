@@ -352,6 +352,10 @@ label:focus-visible,
     padding-inline-start: 0.875rem;
     padding-inline-end: 2.25rem; /* respiro antes do chevron */
 }
+.settings-group .input {
+    width: 9.5rem;
+    padding-inline: 0.875rem;
+}
 .settings-hint {
     font-size: 0.72rem;
     color: var(--text-muted);
@@ -918,6 +922,27 @@ textarea::placeholder { color: var(--text-muted); }
             <option value="hierarchical">Hier&aacute;rquico</option>
         </select>
     </div>
+    <div class="settings-divider"></div>
+    <div class="settings-group">
+        <label class="settings-label" for="preset-font">Fonte</label>
+        <select class="select select-sm" id="preset-font">
+            <option value="default" selected>Padr&atilde;o (Segoe UI)</option>
+            <option value="inter">Inter</option>
+            <option value="roboto">Roboto</option>
+            <option value="open-sans">Open Sans</option>
+            <option value="ubuntu">Ubuntu</option>
+            <option value="lora">Lora (serif)</option>
+            <option value="source-serif">Source Serif 4</option>
+            <option value="merriweather">Merriweather (serif)</option>
+        </select>
+    </div>
+    <div class="settings-divider"></div>
+    <div class="settings-group">
+        <label class="settings-label" for="preset-watermark">Marca d'&aacute;gua</label>
+        <input type="text" class="input input-sm" id="preset-watermark"
+               placeholder="opcional" maxlength="60"
+               title="Texto repetido em diagonal no fundo do PDF">
+    </div>
     <span class="settings-hint">
         <kbd class="kbd kbd-xs">Ctrl</kbd>+<kbd class="kbd kbd-xs">S</kbd> exporta
         &nbsp;&middot;&nbsp;
@@ -1457,6 +1482,8 @@ function getPresetSettings() {
         page_width: document.getElementById('preset-width').value,
         margin: document.getElementById('preset-margin').value,
         mermaid_layout: document.getElementById('preset-mermaid').value,
+        font: document.getElementById('preset-font').value,
+        watermark: document.getElementById('preset-watermark').value.trim(),
     };
 }
 
@@ -1468,6 +1495,8 @@ async function generatePdfBlobFromContent(content, filename) {
     formData.append('page_width', settings.page_width);
     formData.append('margin', settings.margin);
     formData.append('mermaid_layout', settings.mermaid_layout);
+    formData.append('font', settings.font);
+    formData.append('watermark', settings.watermark);
     const resp = await fetch('/api/convert', { method: 'POST', body: formData });
     if (!resp.ok) throw new Error('Conversion failed');
     return await resp.blob();
@@ -1782,6 +1811,8 @@ function loadSettings() {
         if (s.page_width) document.getElementById('preset-width').value = s.page_width;
         if (s.margin) document.getElementById('preset-margin').value = s.margin;
         if (s.mermaid_layout) document.getElementById('preset-mermaid').value = s.mermaid_layout;
+        if (s.font) document.getElementById('preset-font').value = s.font;
+        if (typeof s.watermark === 'string') document.getElementById('preset-watermark').value = s.watermark;
     } catch (e) { /* ignora settings corrompidos */ }
 }
 
@@ -1852,6 +1883,8 @@ function applyHistorySettings(h) {
     if (s.page_width) document.getElementById('preset-width').value = s.page_width;
     if (s.margin) document.getElementById('preset-margin').value = s.margin;
     if (s.mermaid_layout) document.getElementById('preset-mermaid').value = s.mermaid_layout;
+    if (s.font) document.getElementById('preset-font').value = s.font;
+    if (typeof s.watermark === 'string') document.getElementById('preset-watermark').value = s.watermark;
     saveSettings();
 }
 function openHistoryInEditor(id) {
@@ -1895,7 +1928,7 @@ function clearHistory() {
 
 
 // ===================== SETTINGS LISTENERS =====================
-['preset-mermaid', 'preset-width', 'preset-margin'].forEach(id => {
+['preset-mermaid', 'preset-width', 'preset-margin', 'preset-font', 'preset-watermark'].forEach(id => {
     document.getElementById(id).addEventListener('change', () => {
         saveSettings();   // persiste width/margin/mermaid
         updatePreview();
