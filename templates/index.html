@@ -631,6 +631,30 @@ label:focus-visible,
 
 .editor-panel { border-right: 1px solid var(--border); }
 
+/* Nome editável do PDF exportado (header do editor) */
+.editor-filename-wrap {
+    display: inline-flex;
+    align-items: baseline;
+    margin-left: 8px;
+    text-transform: none;
+    letter-spacing: normal;
+}
+#editor-filename {
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--border-hover);
+    color: var(--accent-text);
+    font: inherit;
+    font-weight: 600;
+    padding: 0 2px;
+    max-width: 30ch;
+    cursor: text;
+    transition: border-color var(--transition);
+}
+#editor-filename:hover { border-bottom-color: var(--accent-text); }
+#editor-filename::placeholder { color: var(--text-muted); font-weight: 500; }
+.editor-filename-ext { color: var(--text-muted); font-weight: 500; }
+
 textarea {
     flex: 1;
     background: var(--bg);
@@ -945,7 +969,15 @@ textarea::placeholder { color: var(--text-muted); }
     <div class="editor-view" id="editor-view">
         <div class="panel editor-panel">
             <div class="panel-header">
-                <span><span class="dot dot-green"></span>Editor <span id="editor-filename" style="color:var(--accent-text);margin-left:6px;font-weight:600;text-transform:none;"></span></span>
+                <span style="display:flex;align-items:baseline;">
+                    <span class="dot dot-green"></span>Editor
+                    <span class="editor-filename-wrap">
+                        <input id="editor-filename" type="text" size="9" spellcheck="false"
+                               placeholder="documento" aria-label="Nome do arquivo PDF exportado"
+                               title="Clique para editar o nome do PDF exportado">
+                        <span class="editor-filename-ext">.pdf</span>
+                    </span>
+                </span>
                 <span id="char-count">0 caracteres</span>
             </div>
             <textarea id="editor" aria-label="Conte&uacute;do Markdown" placeholder="Cole ou digite seu Markdown aqui...&#10;&#10;Ou arraste um arquivo .md para esta &aacute;rea."></textarea>
@@ -999,6 +1031,7 @@ textarea::placeholder { color: var(--text-muted); }
 // ===================== DOM REFS =====================
 const editor = document.getElementById('editor');
 const preview = document.getElementById('preview');
+const editorFilename = document.getElementById('editor-filename');
 const charCount = document.getElementById('char-count');
 const previewStatus = document.getElementById('preview-status');
 const statusEl = document.getElementById('status');
@@ -1020,6 +1053,40 @@ let debounceTimer = null;
 let dragSrcId = null;
 let fileIdCounter = 0;
 let history = [];   // histórico persistido no localStorage (ver seção PERSISTÊNCIA)
+let filenameTouched = false;  // usuário editou manualmente o nome do PDF
+
+
+// ===================== NOME DO PDF (editável) =====================
+function fitFilenameInput() {
+    editorFilename.size = Math.max(9, Math.min(30, editorFilename.value.length + 1));
+}
+
+// Se o usuário não personalizou, deriva o nome da 1ª linha do conteúdo
+function setAutoFilename() {
+    if (filenameTouched) return;
+    editorFilename.value = editor.value.trim() ? slugifyFilename(editor.value, 'documento') : '';
+    fitFilenameInput();
+}
+
+editorFilename.addEventListener('input', () => {
+    filenameTouched = editorFilename.value.trim().length > 0;
+    if (!filenameTouched) setAutoFilename();
+    fitFilenameInput();
+});
+// Ao sair do campo, normaliza para o slug que será realmente usado
+editorFilename.addEventListener('change', () => {
+    if (editorFilename.value.trim()) {
+        editorFilename.value = slugifyFilename.fallbackSlug(editorFilename.value);
+        fitFilenameInput();
+    }
+});
+editorFilename.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();  // Escape aqui só sai do campo, não troca de view
+        editorFilename.blur();
+    }
+});
 
 
 // ===================== VIEW SWITCHING =====================
@@ -1291,7 +1358,9 @@ function openInEditor(id) {
     activeFileId = id;
     editor.value = file.content;
     charCount.textContent = `${editor.value.length} caracteres`;
-    document.getElementById('editor-filename').textContent = file.name;
+    filenameTouched = false;
+    editorFilename.value = slugifyFilename(file.content, stripExt(file.name));
+    fitFilenameInput();
 
     // Highlight active card
     document.querySelectorAll('.file-card').forEach(c => c.classList.remove('active'));
@@ -1424,9 +1493,12 @@ async function exportCurrentPdf() {
     showStatus('Gerando PDF...', 'loading');
 
     try {
-        const fallbackName = stripExt(document.getElementById('editor-filename').textContent || 'document');
-        const blob = await generatePdfBlobFromContent(editor.value, fallbackName);
-        const outName = slugifyFilename(editor.value, fallbackName);
+        // Nome personalizado no campo tem prioridade; senão deriva da 1ª linha
+        const customName = editorFilename.value.trim();
+        const outName = customName
+            ? slugifyFilename.fallbackSlug(customName)
+            : slugifyFilename(editor.value, 'documento');
+        const blob = await generatePdfBlobFromContent(editor.value, outName);
         downloadBlob(blob, outName + '.pdf');
         addToHistory(outName, editor.value, getPresetSettings());
         showStatus('PDF gerado com sucesso!', 'success');
@@ -1474,6 +1546,7 @@ async function previewCurrentPdf() {
 // ===================== LIVE PREVIEW =====================
 editor.addEventListener('input', () => {
     charCount.textContent = `${editor.value.length} caracteres`;
+    setAutoFilename();
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(updatePreview, 400);
 
@@ -1788,7 +1861,9 @@ function openHistoryInEditor(id) {
     activeFileId = null;
     editor.value = h.content;
     charCount.textContent = `${editor.value.length} caracteres`;
-    document.getElementById('editor-filename').textContent = h.name;
+    filenameTouched = true;  // preserva o nome com que foi exportado
+    editorFilename.value = h.name;
+    fitFilenameInput();
     switchView('editor');
     updatePreview();
 }
