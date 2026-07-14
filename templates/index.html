@@ -7,7 +7,7 @@
 <meta name="description" content="Converta Markdown em PDF com Mermaid, syntax highlighting e mais.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
 <!-- daisyUI 5 + Tailwind v4 (CDN, no build step) -->
 <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -21,67 +21,151 @@
   window.mermaid = mermaid;
   mermaid.initialize({ startOnLoad: false, theme: 'default' });
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<link rel="stylesheet" id="hljs-dark" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<link rel="stylesheet" id="hljs-light" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" disabled>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+// Aplica o tema salvo antes do primeiro paint (evita flash de tema errado)
+(function () {
+    let theme;
+    try { theme = localStorage.getItem('md2pdf:theme'); } catch (e) {}
+    if (theme !== 'light' && theme !== 'dark') {
+        theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('hljs-dark').disabled = theme === 'light';
+    document.getElementById('hljs-light').disabled = theme !== 'light';
+})();
+</script>
 <style>
 /* =====================================================================
-   Design tokens — dark corporativo (slate/navy + azul)
-   Pares texto/fundo verificados WCAG AA:
-     #E2E8F0 sobre #0F172A ≈ 13.9:1 · #94A3B8 sobre #0F172A ≈ 7.0:1
-     #60A5FA sobre #0F172A ≈ 7.2:1 · #FFFFFF sobre #2563EB ≈ 5.2:1
+   Design tokens — "Grafite & Âmbar"
+   Carvão quente (stone) + acento âmbar/cobre, temas claro e escuro.
+   Todos os pares texto/fundo verificados WCAG AA (>= 4.5:1), ex.:
+     dark:  #E7E5E4/#1C1917 ≈ 13.9:1 · #A8A29E/#1C1917 ≈ 6.9:1
+            #FBBF24/#1C1917 ≈ 10.5:1 · #451A03/#F59E0B ≈ 7.0:1
+     light: #1C1917/#FFFFFF ≈ 17.5:1 · #57534E/#FFFFFF ≈ 7.6:1
+            #92400E/#FAFAF9 ≈ 6.8:1  · #451A03/#D97706 ≈ 4.7:1
    ===================================================================== */
 :root {
-    --bg: #0B1120;
-    --surface: #0F172A;
-    --surface-2: #1E293B;
-    --surface-3: #2B3B54;
-    --border: #243247;
-    --border-hover: #3A4D68;
-    --text: #E2E8F0;
-    --text-muted: #94A3B8;
-    --accent: #2563EB;
-    --accent-hover: #1D4ED8;
-    --accent-text: #60A5FA;
-    --accent-glow: rgba(37, 99, 235, 0.25);
-    --accent-soft: rgba(59, 130, 246, 0.10);
+    --radius: 10px;
+    --radius-lg: 14px;
+    --transition: 0.18s ease;
+    --font-ui: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'Ubuntu Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #171412;
+    --surface: #1C1917;
+    --surface-2: #292524;
+    --surface-3: #3B342F;
+    --border: #322C27;
+    --border-hover: #4A4139;
+    --text: #E7E5E4;
+    --text-muted: #A8A29E;
+    --accent: #F59E0B;
+    --accent-hover: #D97706;
+    --accent-content: #451A03;
+    --accent-text: #FBBF24;
+    --accent-soft: rgba(245, 158, 11, 0.10);
     --success: #34D399;
     --success-bg: rgba(52, 211, 153, 0.12);
     --danger: #F87171;
     --danger-bg: rgba(248, 113, 113, 0.12);
     --warning: #FBBF24;
     --warning-bg: rgba(251, 191, 36, 0.12);
-    --radius: 10px;
-    --radius-lg: 14px;
-    --shadow-sm: 0 1px 3px rgba(2,6,23,0.35);
-    --shadow-md: 0 4px 12px rgba(2,6,23,0.45);
-    --shadow-lg: 0 8px 30px rgba(2,6,23,0.55);
-    --transition: 0.18s ease;
-    --font-ui: 'Inter', -apple-system, 'Segoe UI', sans-serif;
-    --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
-}
-
-/* ===== daisyUI theme override — identidade md2pdf (navy + azul corporativo) ===== */
-[data-theme="dark"] {
-    --color-base-100: #0F172A;
-    --color-base-200: #1E293B;
-    --color-base-300: #334155;
-    --color-base-content: #E2E8F0;
-    --color-primary: #2563EB;
-    --color-primary-content: #FFFFFF;
-    --color-secondary: #334155;
-    --color-secondary-content: #E2E8F0;
-    --color-accent: #2563EB;
-    --color-accent-content: #FFFFFF;
-    --color-neutral: #1E293B;
-    --color-neutral-content: #E2E8F0;
-    --color-info: #60A5FA;
-    --color-info-content: #0B1120;
+    --heading-strong: #F5F5F4;
+    --heading-3: #D6D3D1;
+    --heading-4: #C6BEB5;
+    --accent-text-hover: #FCD34D;
+    --code-inline: #FDBA74;
+    --mark-bg: rgba(251, 191, 36, 0.18);
+    --mark-text: #FDE68A;
+    --scrim: rgba(12, 10, 9, 0.65);
+    --shadow-sm: 0 1px 3px rgba(12,10,9,0.35);
+    --shadow-md: 0 4px 12px rgba(12,10,9,0.45);
+    --shadow-lg: 0 8px 30px rgba(12,10,9,0.55);
+    /* daisyUI */
+    --color-base-100: #1C1917;
+    --color-base-200: #292524;
+    --color-base-300: #44403C;
+    --color-base-content: #E7E5E4;
+    --color-primary: #F59E0B;
+    --color-primary-content: #451A03;
+    --color-secondary: #44403C;
+    --color-secondary-content: #E7E5E4;
+    --color-accent: #F59E0B;
+    --color-accent-content: #451A03;
+    --color-neutral: #292524;
+    --color-neutral-content: #E7E5E4;
+    --color-info: #FBBF24;
+    --color-info-content: #451A03;
     --color-success: #34D399;
     --color-success-content: #064E3B;
     --color-warning: #FBBF24;
     --color-warning-content: #451A03;
     --color-error: #F87171;
     --color-error-content: #450A0A;
+    --radius-field: 8px;
+    --radius-box: 10px;
+    --radius-selector: 6px;
+}
+
+[data-theme="light"] {
+    color-scheme: light;
+    --bg: #FAFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F5F5F4;
+    --surface-3: #E7E5E4;
+    --border: #E7E5E4;
+    --border-hover: #D6D3D1;
+    --text: #1C1917;
+    --text-muted: #57534E;
+    --accent: #D97706;
+    --accent-hover: #B45309;
+    --accent-content: #451A03;
+    --accent-text: #92400E;
+    --accent-soft: rgba(217, 119, 6, 0.10);
+    --success: #047857;
+    --success-bg: rgba(4, 120, 87, 0.10);
+    --danger: #B91C1C;
+    --danger-bg: rgba(185, 28, 28, 0.08);
+    --warning: #92400E;
+    --warning-bg: rgba(217, 119, 6, 0.12);
+    --heading-strong: #0C0A09;
+    --heading-3: #44403C;
+    --heading-4: #57534E;
+    --accent-text-hover: #7C2D12;
+    --code-inline: #9A3412;
+    --mark-bg: #FEF3C7;
+    --mark-text: #713F12;
+    --scrim: rgba(28, 25, 23, 0.45);
+    --shadow-sm: 0 1px 3px rgba(28,25,23,0.10);
+    --shadow-md: 0 4px 12px rgba(28,25,23,0.12);
+    --shadow-lg: 0 8px 30px rgba(28,25,23,0.16);
+    /* daisyUI */
+    --color-base-100: #FFFFFF;
+    --color-base-200: #F5F5F4;
+    --color-base-300: #D6D3D1;
+    --color-base-content: #1C1917;
+    --color-primary: #D97706;
+    --color-primary-content: #451A03;
+    --color-secondary: #E7E5E4;
+    --color-secondary-content: #1C1917;
+    --color-accent: #D97706;
+    --color-accent-content: #451A03;
+    --color-neutral: #F5F5F4;
+    --color-neutral-content: #1C1917;
+    --color-info: #92400E;
+    --color-info-content: #FFFFFF;
+    --color-success: #047857;
+    --color-success-content: #FFFFFF;
+    --color-warning: #92400E;
+    --color-warning-content: #FFFFFF;
+    --color-error: #B91C1C;
+    --color-error-content: #FFFFFF;
     --radius-field: 8px;
     --radius-box: 10px;
     --radius-selector: 6px;
@@ -111,6 +195,10 @@ body {
     flex-shrink: 0;
 }
 .icon-xl { width: 2.5rem; height: 2.5rem; stroke-width: 1.5; }
+
+/* Toggle de tema: sol no escuro (vai para claro), lua no claro (vai para escuro) */
+[data-theme="dark"] .icon-theme-moon { display: none; }
+[data-theme="light"] .icon-theme-sun { display: none; }
 
 /* ===== Focus visível (navegação por teclado) ===== */
 button:focus-visible,
@@ -162,7 +250,7 @@ label:focus-visible,
     height: 34px;
     border-radius: 8px;
     background: var(--accent);
-    color: #fff;
+    color: var(--accent-content);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -212,7 +300,7 @@ label:focus-visible,
 .view-tab:hover { color: var(--text); background: var(--surface-2); }
 .view-tab.active {
     background: var(--accent);
-    color: #fff;
+    color: var(--accent-content);
 }
 
 /* ===== Actions ===== */
@@ -550,7 +638,7 @@ textarea {
     border: none;
     padding: 20px;
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.6;
     resize: none;
     tab-size: 4;
@@ -565,18 +653,18 @@ textarea::placeholder { color: var(--text-muted); }
     padding: 24px;
     background: var(--bg);
 }
-.preview-content h1 { font-size: 1.6em; margin: 18px 0 10px; color: #F1F5F9; border-bottom: 2px solid var(--border); padding-bottom: 6px; }
-.preview-content h2 { font-size: 1.3em; margin: 16px 0 8px; color: #E2E8F0; }
-.preview-content h3 { font-size: 1.1em; margin: 12px 0 6px; color: #CBD5E1; }
-.preview-content h4 { font-size: 1em; margin: 10px 0 5px; color: #B4C0D3; }
-.preview-content h5, .preview-content h6 { font-size: 0.9em; margin: 8px 0 4px; color: #94A3B8; }
+.preview-content h1 { font-size: 1.6em; margin: 18px 0 10px; color: var(--heading-strong); border-bottom: 2px solid var(--border); padding-bottom: 6px; }
+.preview-content h2 { font-size: 1.3em; margin: 16px 0 8px; color: var(--text); }
+.preview-content h3 { font-size: 1.1em; margin: 12px 0 6px; color: var(--heading-3); }
+.preview-content h4 { font-size: 1em; margin: 10px 0 5px; color: var(--heading-4); }
+.preview-content h5, .preview-content h6 { font-size: 0.9em; margin: 8px 0 4px; color: var(--text-muted); }
 .preview-content p { margin: 6px 0; line-height: 1.7; }
 .preview-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.85em; }
 .preview-content th, .preview-content td { border: 1px solid var(--border); padding: 6px 10px; }
 .preview-content th { background: var(--surface-2); font-weight: 600; }
 .preview-content pre { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin: 10px 0; overflow-x: auto; }
 .preview-content code { font-family: 'Cascadia Code', monospace; font-size: 0.88em; }
-.preview-content p code, .preview-content li code, .preview-content td code { background: var(--surface-2); padding: 1px 5px; border-radius: 3px; color: #F9A8D4; }
+.preview-content p code, .preview-content li code, .preview-content td code { background: var(--surface-2); padding: 1px 5px; border-radius: 3px; color: var(--code-inline); }
 .preview-content pre code.hljs { padding: 0; background: transparent; }
 .preview-content blockquote { border-left: 4px solid var(--accent-text); background: var(--accent-soft); padding: 10px 14px; margin: 12px 0; border-radius: 3px; }
 .preview-content hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
@@ -593,12 +681,12 @@ textarea::placeholder { color: var(--text-muted); }
 .preview-content .mermaid.mermaid-hierarchical svg {
     max-width: none !important;
 }
-.preview-content a { color: #60A5FA; text-decoration: none; border-bottom: 1px solid rgba(96,165,250,0.35); transition: color var(--transition); }
-.preview-content a:hover { color: #93C5FD; }
-.preview-content del { text-decoration: line-through; color: #94A3B8; }
-.preview-content mark { background: rgba(254,240,138,0.2); padding: 1px 4px; border-radius: 2px; color: #fef08a; }
+.preview-content a { color: var(--accent-text); text-decoration: none; border-bottom: 1px solid var(--border-hover); transition: color var(--transition); }
+.preview-content a:hover { color: var(--accent-text-hover); }
+.preview-content del { text-decoration: line-through; color: var(--text-muted); }
+.preview-content mark { background: var(--mark-bg); padding: 1px 4px; border-radius: 2px; color: var(--mark-text); }
 .preview-content img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0; }
-.preview-content dt { font-weight: 600; margin-top: 10px; color: #F1F5F9; }
+.preview-content dt { font-weight: 600; margin-top: 10px; color: var(--heading-strong); }
 .preview-content dd { margin-left: 20px; margin-bottom: 6px; }
 .preview-content .footnote { font-size: 0.85em; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 24px; padding-top: 12px; }
 
@@ -606,7 +694,7 @@ textarea::placeholder { color: var(--text-muted); }
 .drop-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(2, 6, 23, 0.65);
+    background: var(--scrim);
     backdrop-filter: blur(6px);
     display: none;
     align-items: center;
@@ -628,8 +716,8 @@ textarea::placeholder { color: var(--text-muted); }
 .drop-box-sub { font-size: 0.82em; color: var(--text-muted); margin-top: 6px; }
 
 @keyframes dropPulse {
-    0%, 100% { box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 0px var(--accent-glow); }
-    50% { box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 12px transparent; }
+    0%, 100% { box-shadow: var(--shadow-lg), 0 0 0 0px var(--accent-soft); }
+    50% { box-shadow: var(--shadow-lg), 0 0 0 12px transparent; }
 }
 
 /* ===== Status Toast ===== */
@@ -648,16 +736,16 @@ textarea::placeholder { color: var(--text-muted); }
     backdrop-filter: blur(8px);
 }
 .status.show { transform: translateY(0); }
-.status.success { background: rgba(52, 211, 153, 0.95); color: #064E3B; }
-.status.error { background: rgba(248, 113, 113, 0.95); color: #450A0A; }
-.status.loading { background: rgba(37, 99, 235, 0.95); color: #fff; }
+.status.success { background: rgba(52, 211, 153, 0.97); color: #064E3B; }
+.status.error { background: rgba(248, 113, 113, 0.97); color: #450A0A; }
+.status.loading { background: var(--accent); color: var(--accent-content); }
 
 /* ===== Spinner ===== */
 /* 1em acompanha o tamanho da fonte do botão (não fica maior que o texto) */
 .spinner {
     display: inline-block;
     width: 1em; height: 1em;
-    border: 2px solid rgba(255,255,255,0.3);
+    border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
     border-top-color: currentColor;
     border-radius: 50%;
     flex-shrink: 0;
@@ -704,6 +792,7 @@ textarea::placeholder { color: var(--text-muted); }
     .view-tab { padding: 7px 10px; font-size: 0.72rem; }
     .settings-group { flex: 1 1 100%; }
     .actions .btn { flex: 1 1 auto; }
+    .actions .btn-icon { flex: 0 0 auto; }
     .file-card-meta { flex-wrap: wrap; gap: 4px 10px; }
 }
 
@@ -731,6 +820,8 @@ textarea::placeholder { color: var(--text-muted); }
     <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></symbol>
     <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
 </svg>
 
 <header class="header">
@@ -757,6 +848,11 @@ textarea::placeholder { color: var(--text-muted); }
         </nav>
     </div>
     <div class="actions" id="header-actions">
+        <button class="btn btn-sm btn-ghost btn-icon" id="theme-toggle" onclick="toggleTheme()"
+                aria-label="Alternar tema claro/escuro" title="Alternar tema">
+            <svg class="icon icon-theme-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+            <svg class="icon icon-theme-moon" aria-hidden="true"><use href="#i-moon"/></svg>
+        </button>
         <label class="btn btn-sm" for="file-input" id="upload-btn" tabindex="0">
             <svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg> Upload .md
             <input type="file" id="file-input" accept=".md,.markdown,.txt" multiple style="display:none">
@@ -1573,6 +1669,21 @@ document.addEventListener('keydown', (e) => {
         switchView('files');
     }
 });
+
+// ===================== TEMA (claro/escuro) =====================
+const LS_THEME = 'md2pdf:theme';
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('hljs-dark').disabled = theme === 'light';
+    document.getElementById('hljs-light').disabled = theme !== 'light';
+    try { localStorage.setItem(LS_THEME, theme); } catch (e) { /* quota */ }
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    applyTheme(current === 'light' ? 'dark' : 'light');
+}
 
 // ===================== PERSISTÊNCIA (localStorage) =====================
 const LS_SETTINGS = 'md2pdf:settings';
