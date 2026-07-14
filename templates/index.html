@@ -748,25 +748,43 @@ textarea::placeholder { color: var(--text-muted); }
     50% { box-shadow: var(--shadow-lg), 0 0 0 12px transparent; }
 }
 
-/* ===== Status Toast ===== */
-.status {
+/* ===== Status Toast =====
+   NOTA: não usar a classe "status" — colide com o componente .status
+   do daisyUI 5 (dot indicador), que esmaga o balão. */
+.toast-status {
     position: fixed;
     bottom: 20px;
     right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: min(380px, calc(100vw - 40px));
     padding: 12px 22px;
     border-radius: 10px;
     font-size: 0.83em;
     font-weight: 500;
-    transform: translateY(100px);
-    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* esconde 100% da própria altura + offset — nunca fica espiando no canto */
+    transform: translateY(calc(100% + 40px));
+    opacity: 0;
+    visibility: hidden;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.25s ease,
+                visibility 0s linear 0.35s;
     z-index: 2000;
     box-shadow: var(--shadow-lg);
     backdrop-filter: blur(8px);
 }
-.status.show { transform: translateY(0); }
-.status.success { background: rgba(52, 211, 153, 0.97); color: #064E3B; }
-.status.error { background: rgba(248, 113, 113, 0.97); color: #450A0A; }
-.status.loading { background: var(--accent); color: var(--accent-content); }
+.toast-status.show {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.2s ease;
+}
+/* Tipos prefixados com t- para não colidir com .loading/.status do daisyUI */
+.toast-status.t-success { background: rgba(52, 211, 153, 0.97); color: #064E3B; }
+.toast-status.t-error { background: rgba(248, 113, 113, 0.97); color: #450A0A; }
+.toast-status.t-loading { background: var(--accent); color: var(--accent-content); }
 
 /* ===== Spinner ===== */
 /* 1em acompanha o tamanho da fonte do botão (não fica maior que o texto) */
@@ -898,10 +916,13 @@ textarea::placeholder { color: var(--text-muted); }
     <div class="settings-group">
         <label class="settings-label" for="preset-width">Largura</label>
         <select class="select select-sm" id="preset-width">
+            <option value="a5">A5 (148mm)</option>
+            <option value="compact">Compacta (170mm)</option>
             <option value="a4" selected>A4 (210mm)</option>
             <option value="letter">Carta (216mm)</option>
             <option value="wide">Larga (280mm)</option>
-            <option value="compact">Compacta (170mm)</option>
+            <option value="a3">A3 (297mm)</option>
+            <option value="ultrawide">Ultra-larga (320mm)</option>
         </select>
     </div>
     <div class="settings-divider"></div>
@@ -909,9 +930,12 @@ textarea::placeholder { color: var(--text-muted); }
         <label class="settings-label" for="preset-margin">Margem</label>
         <select class="select select-sm" id="preset-margin">
             <option value="none">Nenhuma</option>
-            <option value="tight">Estreita</option>
-            <option value="normal" selected>Normal</option>
-            <option value="wide">Ampla</option>
+            <option value="minimal">M&iacute;nima (3mm)</option>
+            <option value="tight">Estreita (5mm)</option>
+            <option value="normal" selected>Normal (10mm)</option>
+            <option value="comfortable">Confort&aacute;vel (12mm)</option>
+            <option value="wide">Ampla (15mm)</option>
+            <option value="extra">Extra (20mm)</option>
         </select>
     </div>
     <div class="settings-divider"></div>
@@ -1049,7 +1073,7 @@ textarea::placeholder { color: var(--text-muted); }
     </div>
 </div>
 
-<div class="status" id="status" role="status" aria-live="polite"></div>
+<div class="toast-status" id="status" role="status" aria-live="polite"></div>
 
 <script>
 
@@ -1747,8 +1771,9 @@ dropOverlay.addEventListener('drop', (e) => {
 
 // ===================== STATUS TOAST =====================
 function showStatus(msg, type) {
-    statusEl.textContent = msg;
-    statusEl.className = 'status show ' + type;
+    // Loading ganha um spinner dentro do próprio toast
+    statusEl.innerHTML = (type === 'loading' ? '<span class="spinner"></span>' : '') + escapeHtml(msg);
+    statusEl.className = 'toast-status show t-' + type;
     setTimeout(() => statusEl.classList.remove('show'), 3000);
 }
 
