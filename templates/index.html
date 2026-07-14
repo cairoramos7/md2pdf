@@ -226,6 +226,9 @@ label:focus-visible,
    Helper para botão-ícone quadrado usado nos cards. */
 .btn-icon { padding-left: 0.5rem; padding-right: 0.5rem; }
 .btn .icon { width: 0.9rem; height: 0.9rem; }
+/* Respiro horizontal nos botões de ação (header e fila) */
+.actions .btn, .file-queue-actions .btn { padding-inline: 1rem; }
+.actions .btn-icon, .file-queue-actions .btn-icon { padding-inline: 0.5rem; }
 
 /* ===== Toolbar de presets ===== */
 .toolbar {
@@ -255,7 +258,12 @@ label:focus-visible,
     height: 24px;
     background: var(--border);
 }
-.settings-group .select { min-width: 8.5rem; cursor: pointer; }
+.settings-group .select {
+    min-width: 8.5rem;
+    cursor: pointer;
+    padding-inline-start: 0.875rem;
+    padding-inline-end: 2.25rem; /* respiro antes do chevron */
+}
 .settings-hint {
     font-size: 0.72rem;
     color: var(--text-muted);
@@ -645,12 +653,14 @@ textarea::placeholder { color: var(--text-muted); }
 .status.loading { background: rgba(37, 99, 235, 0.95); color: #fff; }
 
 /* ===== Spinner ===== */
+/* 1em acompanha o tamanho da fonte do botão (não fica maior que o texto) */
 .spinner {
     display: inline-block;
-    width: 14px; height: 14px;
+    width: 1em; height: 1em;
     border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: white;
+    border-top-color: currentColor;
     border-radius: 50%;
+    flex-shrink: 0;
     animation: spin 0.6s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -788,7 +798,11 @@ textarea::placeholder { color: var(--text-muted); }
             <option value="hierarchical">Hier&aacute;rquico</option>
         </select>
     </div>
-    <span class="settings-hint"><kbd class="kbd kbd-xs">Ctrl</kbd>+<kbd class="kbd kbd-xs">S</kbd> exporta o documento atual</span>
+    <span class="settings-hint">
+        <kbd class="kbd kbd-xs">Ctrl</kbd>+<kbd class="kbd kbd-xs">S</kbd> exporta
+        &nbsp;&middot;&nbsp;
+        <kbd class="kbd kbd-xs">Ctrl</kbd>+<kbd class="kbd kbd-xs">Shift</kbd>+<kbd class="kbd kbd-xs">S</kbd> visualiza
+    </span>
 </div>
 
 <div class="main-content">
@@ -1543,9 +1557,12 @@ function showStatus(msg, type) {
 
 // ===================== KEYBOARD SHORTCUTS =====================
 document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        if (currentView === 'editor') {
+        if (e.shiftKey) {
+            // Ctrl+Shift+S — visualiza o PDF do documento atual
+            previewCurrentPdf();
+        } else if (currentView === 'editor') {
             exportCurrentPdf();
         } else if (fileList.length > 0) {
             convertAll();
