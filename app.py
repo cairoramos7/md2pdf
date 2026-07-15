@@ -215,14 +215,16 @@ WIDTH_PRESETS = {
     "ultrawide": {"css_width": "100%", "pdf_width": "320mm",  "viewport_px": 1210},
 }
 
+# Vertical simétrica (top = bottom) e proporcional à lateral (~80%),
+# para a mancha de texto não parecer esmagada em cima/embaixo.
 MARGIN_PRESETS = {
     "none":        {"top": "0",    "right": "0",    "bottom": "0",    "left": "0"},
-    "minimal":     {"top": "3mm",  "right": "5mm",  "bottom": "3mm",  "left": "5mm"},
-    "tight":       {"top": "5mm",  "right": "10mm", "bottom": "3mm",  "left": "10mm"},
-    "normal":      {"top": "10mm", "right": "18mm", "bottom": "5mm",  "left": "18mm"},
-    "comfortable": {"top": "12mm", "right": "22mm", "bottom": "8mm",  "left": "22mm"},
-    "wide":        {"top": "15mm", "right": "28mm", "bottom": "10mm", "left": "28mm"},
-    "extra":       {"top": "20mm", "right": "35mm", "bottom": "15mm", "left": "35mm"},
+    "minimal":     {"top": "4mm",  "right": "5mm",  "bottom": "4mm",  "left": "5mm"},
+    "tight":       {"top": "8mm",  "right": "10mm", "bottom": "8mm",  "left": "10mm"},
+    "normal":      {"top": "14mm", "right": "18mm", "bottom": "14mm", "left": "18mm"},
+    "comfortable": {"top": "18mm", "right": "22mm", "bottom": "18mm", "left": "22mm"},
+    "wide":        {"top": "22mm", "right": "28mm", "bottom": "22mm", "left": "28mm"},
+    "extra":       {"top": "28mm", "right": "35mm", "bottom": "28mm", "left": "35mm"},
 }
 
 # Fontes do corpo do PDF. "default" mantém a pilha de sistema atual;
@@ -491,10 +493,11 @@ async def html_to_pdf_bytes(html_content, width_preset="a4"):
             # Convert height from viewport pixels to mm using the same
             # width ratio (e.g.: 794px = 210mm), avoiding mismatch
             # between screen pixel measurement and print mm rendering.
-            # Add 5% safety margin to account for print-media reflow.
+            # Small safety buffer for print-media reflow: 1% + 2mm fixed.
+            # (5% proporcional criava um rabo em branco crescente no fim.)
             pdf_width_mm = float(wp["pdf_width"].replace("mm", ""))
             mm_per_px = pdf_width_mm / wp["viewport_px"]
-            content_height_mm = (content_height_px * mm_per_px) * 1.05
+            content_height_mm = (content_height_px * mm_per_px) * 1.01 + 2
 
             await page.pdf(
                 path=pdf_path,
