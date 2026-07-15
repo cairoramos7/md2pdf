@@ -356,6 +356,25 @@ label:focus-visible,
     width: 9.5rem;
     padding-inline: 0.875rem;
 }
+
+/* Margens personalizadas (S/D/I/E em mm) */
+.margin-field {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: text;
+}
+.margin-field .input {
+    width: 3.8rem;
+    padding-inline: 0.5rem;
+}
+.margin-unit {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
 .settings-hint {
     font-size: 0.72rem;
     color: var(--text-muted);
@@ -930,13 +949,29 @@ textarea::placeholder { color: var(--text-muted); }
         <label class="settings-label" for="preset-margin">Margem</label>
         <select class="select select-sm" id="preset-margin">
             <option value="none">Nenhuma</option>
-            <option value="minimal">M&iacute;nima (3mm)</option>
-            <option value="tight">Estreita (5mm)</option>
-            <option value="normal" selected>Normal (10mm)</option>
-            <option value="comfortable">Confort&aacute;vel (12mm)</option>
-            <option value="wide">Ampla (15mm)</option>
-            <option value="extra">Extra (20mm)</option>
+            <option value="minimal">M&iacute;nima</option>
+            <option value="tight">Estreita</option>
+            <option value="normal" selected>Normal</option>
+            <option value="comfortable">Confort&aacute;vel</option>
+            <option value="wide">Ampla</option>
+            <option value="extra">Extra</option>
+            <option value="custom">Personalizada&hellip;</option>
         </select>
+    </div>
+    <div class="settings-group" id="custom-margins" style="display:none;" role="group" aria-label="Margens personalizadas em mil&iacute;metros">
+        <label class="margin-field" title="Margem superior (mm)">S
+            <input type="number" class="input input-sm" id="margin-top" min="0" max="80" step="1" value="14" aria-label="Margem superior (mm)">
+        </label>
+        <label class="margin-field" title="Margem direita (mm)">D
+            <input type="number" class="input input-sm" id="margin-right" min="0" max="80" step="1" value="18" aria-label="Margem direita (mm)">
+        </label>
+        <label class="margin-field" title="Margem inferior (mm)">I
+            <input type="number" class="input input-sm" id="margin-bottom" min="0" max="80" step="1" value="14" aria-label="Margem inferior (mm)">
+        </label>
+        <label class="margin-field" title="Margem esquerda (mm)">E
+            <input type="number" class="input input-sm" id="margin-left" min="0" max="80" step="1" value="18" aria-label="Margem esquerda (mm)">
+        </label>
+        <span class="margin-unit">mm</span>
     </div>
     <div class="settings-divider"></div>
     <div class="settings-group">
@@ -958,6 +993,19 @@ textarea::placeholder { color: var(--text-muted); }
             <option value="lora">Lora (serif)</option>
             <option value="source-serif">Source Serif 4</option>
             <option value="merriweather">Merriweather (serif)</option>
+        </select>
+    </div>
+    <div class="settings-divider"></div>
+    <div class="settings-group">
+        <label class="settings-label" for="preset-font-mono">Mono</label>
+        <select class="select select-sm" id="preset-font-mono">
+            <option value="ubuntu-mono" selected>Ubuntu Mono</option>
+            <option value="jetbrains-mono">JetBrains Mono</option>
+            <option value="fira-code">Fira Code</option>
+            <option value="source-code-pro">Source Code Pro</option>
+            <option value="roboto-mono">Roboto Mono</option>
+            <option value="ibm-plex-mono">IBM Plex Mono</option>
+            <option value="inconsolata">Inconsolata</option>
         </select>
     </div>
     <div class="settings-divider"></div>
@@ -1505,10 +1553,21 @@ function getPresetSettings() {
     return {
         page_width: document.getElementById('preset-width').value,
         margin: document.getElementById('preset-margin').value,
+        margin_top: document.getElementById('margin-top').value,
+        margin_right: document.getElementById('margin-right').value,
+        margin_bottom: document.getElementById('margin-bottom').value,
+        margin_left: document.getElementById('margin-left').value,
         mermaid_layout: document.getElementById('preset-mermaid').value,
         font: document.getElementById('preset-font').value,
+        font_mono: document.getElementById('preset-font-mono').value,
         watermark: document.getElementById('preset-watermark').value.trim(),
     };
+}
+
+// Campos S/D/I/E só aparecem com margem "Personalizada…"
+function updateCustomMarginsVisibility() {
+    const isCustom = document.getElementById('preset-margin').value === 'custom';
+    document.getElementById('custom-margins').style.display = isCustom ? 'flex' : 'none';
 }
 
 async function generatePdfBlobFromContent(content, filename) {
@@ -1520,7 +1579,14 @@ async function generatePdfBlobFromContent(content, filename) {
     formData.append('margin', settings.margin);
     formData.append('mermaid_layout', settings.mermaid_layout);
     formData.append('font', settings.font);
+    formData.append('font_mono', settings.font_mono);
     formData.append('watermark', settings.watermark);
+    if (settings.margin === 'custom') {
+        formData.append('margin_top', settings.margin_top);
+        formData.append('margin_right', settings.margin_right);
+        formData.append('margin_bottom', settings.margin_bottom);
+        formData.append('margin_left', settings.margin_left);
+    }
     const resp = await fetch('/api/convert', { method: 'POST', body: formData });
     if (!resp.ok) throw new Error('Conversion failed');
     return await resp.blob();
@@ -1835,10 +1901,16 @@ function loadSettings() {
         const s = JSON.parse(raw) || {};
         if (s.page_width) document.getElementById('preset-width').value = s.page_width;
         if (s.margin) document.getElementById('preset-margin').value = s.margin;
+        if (s.margin_top) document.getElementById('margin-top').value = s.margin_top;
+        if (s.margin_right) document.getElementById('margin-right').value = s.margin_right;
+        if (s.margin_bottom) document.getElementById('margin-bottom').value = s.margin_bottom;
+        if (s.margin_left) document.getElementById('margin-left').value = s.margin_left;
         if (s.mermaid_layout) document.getElementById('preset-mermaid').value = s.mermaid_layout;
         if (s.font) document.getElementById('preset-font').value = s.font;
+        if (s.font_mono) document.getElementById('preset-font-mono').value = s.font_mono;
         if (typeof s.watermark === 'string') document.getElementById('preset-watermark').value = s.watermark;
     } catch (e) { /* ignora settings corrompidos */ }
+    updateCustomMarginsVisibility();
 }
 
 // --- Histórico ---
@@ -1907,9 +1979,15 @@ function applyHistorySettings(h) {
     const s = h.settings || {};
     if (s.page_width) document.getElementById('preset-width').value = s.page_width;
     if (s.margin) document.getElementById('preset-margin').value = s.margin;
+    if (s.margin_top) document.getElementById('margin-top').value = s.margin_top;
+    if (s.margin_right) document.getElementById('margin-right').value = s.margin_right;
+    if (s.margin_bottom) document.getElementById('margin-bottom').value = s.margin_bottom;
+    if (s.margin_left) document.getElementById('margin-left').value = s.margin_left;
     if (s.mermaid_layout) document.getElementById('preset-mermaid').value = s.mermaid_layout;
     if (s.font) document.getElementById('preset-font').value = s.font;
+    if (s.font_mono) document.getElementById('preset-font-mono').value = s.font_mono;
     if (typeof s.watermark === 'string') document.getElementById('preset-watermark').value = s.watermark;
+    updateCustomMarginsVisibility();
     saveSettings();
 }
 function openHistoryInEditor(id) {
@@ -1953,9 +2031,11 @@ function clearHistory() {
 
 
 // ===================== SETTINGS LISTENERS =====================
-['preset-mermaid', 'preset-width', 'preset-margin', 'preset-font', 'preset-watermark'].forEach(id => {
+['preset-mermaid', 'preset-width', 'preset-margin', 'preset-font', 'preset-font-mono',
+ 'preset-watermark', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left'].forEach(id => {
     document.getElementById(id).addEventListener('change', () => {
-        saveSettings();   // persiste width/margin/mermaid
+        updateCustomMarginsVisibility();
+        saveSettings();   // persiste todos os presets
         updatePreview();
     });
 });
