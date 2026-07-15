@@ -215,14 +215,16 @@ WIDTH_PRESETS = {
     "ultrawide": {"css_width": "100%", "pdf_width": "320mm",  "viewport_px": 1210},
 }
 
+# Vertical simétrica (top = bottom) e proporcional à lateral (~80%),
+# para a mancha de texto não parecer esmagada em cima/embaixo.
 MARGIN_PRESETS = {
     "none":        {"top": "0",    "right": "0",    "bottom": "0",    "left": "0"},
-    "minimal":     {"top": "3mm",  "right": "5mm",  "bottom": "3mm",  "left": "5mm"},
-    "tight":       {"top": "5mm",  "right": "10mm", "bottom": "3mm",  "left": "10mm"},
-    "normal":      {"top": "10mm", "right": "18mm", "bottom": "5mm",  "left": "18mm"},
-    "comfortable": {"top": "12mm", "right": "22mm", "bottom": "8mm",  "left": "22mm"},
-    "wide":        {"top": "15mm", "right": "28mm", "bottom": "10mm", "left": "28mm"},
-    "extra":       {"top": "20mm", "right": "35mm", "bottom": "15mm", "left": "35mm"},
+    "minimal":     {"top": "4mm",  "right": "5mm",  "bottom": "4mm",  "left": "5mm"},
+    "tight":       {"top": "8mm",  "right": "10mm", "bottom": "8mm",  "left": "10mm"},
+    "normal":      {"top": "14mm", "right": "18mm", "bottom": "14mm", "left": "18mm"},
+    "comfortable": {"top": "18mm", "right": "22mm", "bottom": "18mm", "left": "22mm"},
+    "wide":        {"top": "22mm", "right": "28mm", "bottom": "22mm", "left": "28mm"},
+    "extra":       {"top": "28mm", "right": "35mm", "bottom": "28mm", "left": "35mm"},
 }
 
 # Fontes do corpo do PDF. "default" mantém a pilha de sistema atual;
@@ -238,12 +240,28 @@ FONT_PRESETS = {
     "merriweather": {"gf": "Merriweather:wght@400;700",     "family": "'Merriweather', serif"},
 }
 
+# Fontes monoespaçadas (blocos de código e código inline do PDF)
+MONO_FONT_PRESETS = {
+    "ubuntu-mono":     {"gf": "Ubuntu+Mono:wght@400;700",     "family": "'Ubuntu Mono', 'Cascadia Code', Consolas, monospace"},
+    "jetbrains-mono":  {"gf": "JetBrains+Mono:wght@400;700",  "family": "'JetBrains Mono', Consolas, monospace"},
+    "fira-code":       {"gf": "Fira+Code:wght@400;700",       "family": "'Fira Code', Consolas, monospace"},
+    "source-code-pro": {"gf": "Source+Code+Pro:wght@400;700", "family": "'Source Code Pro', Consolas, monospace"},
+    "roboto-mono":     {"gf": "Roboto+Mono:wght@400;700",     "family": "'Roboto Mono', Consolas, monospace"},
+    "ibm-plex-mono":   {"gf": "IBM+Plex+Mono:wght@400;700",   "family": "'IBM Plex Mono', Consolas, monospace"},
+    "inconsolata":     {"gf": "Inconsolata:wght@400;700",     "family": "'Inconsolata', Consolas, monospace"},
+}
 
-def get_pdf_style(margin_preset="normal", font_family=None):
-    """Generate PDF CSS with the given margin preset and body font."""
-    m = MARGIN_PRESETS.get(margin_preset, MARGIN_PRESETS["normal"])
+
+def get_pdf_style(margin_preset="normal", font_family=None, mono_family=None, custom_margins=None):
+    """Generate PDF CSS with the given margins and fonts.
+
+    custom_margins (dict top/right/bottom/left, valores com unidade)
+    tem prioridade sobre o preset.
+    """
+    m = custom_margins or MARGIN_PRESETS.get(margin_preset, MARGIN_PRESETS["normal"])
     padding = f"{m['top']} {m['right']} {m['bottom']} {m['left']}"
     font_stack = font_family or "'Segoe UI', -apple-system, 'Helvetica Neue', Arial, sans-serif"
+    mono_stack = mono_family or MONO_FONT_PRESETS["ubuntu-mono"]["family"]
     return f"""
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 html, body {{ height: auto !important; min-height: 0 !important; }}
@@ -292,7 +310,7 @@ th {{ background: #F5F5F4; font-weight: 600; color: #1C1917; }}
 tr:nth-child(even) td {{ background: #FAFAF9; }}
 
 pre {{ background: #FAFAF9; border: 1px solid #E7E5E4; border-radius: 6px; padding: 14px 16px; overflow-x: hidden; overflow-wrap: break-word; word-break: break-all; white-space: pre-wrap; margin: 12px 0; line-height: 1.5; }}
-code {{ font-family: 'Ubuntu Mono', 'Cascadia Code', Consolas, monospace; font-size: 0.92em; }}
+code {{ font-family: {mono_stack}; font-size: 0.92em; }}
 p code, li code, td code {{ background: #F5F5F4; padding: 2px 6px; border-radius: 4px; color: #9A3412; font-size: 0.9em; }}
 pre code.hljs {{ padding: 0; background: transparent; }}
 
@@ -354,12 +372,14 @@ body {{ position: relative; }}
 
 
 def wrap_for_pdf(body_html, title, margin_preset="normal", mermaid_layout="adaptive",
-                 font="default", watermark=""):
+                 font="default", watermark="", font_mono="ubuntu-mono", custom_margins=None):
     font_cfg = FONT_PRESETS.get(font, FONT_PRESETS["default"])
-    style = get_pdf_style(margin_preset, font_family=font_cfg["family"])
+    mono_cfg = MONO_FONT_PRESETS.get(font_mono, MONO_FONT_PRESETS["ubuntu-mono"])
+    style = get_pdf_style(margin_preset, font_family=font_cfg["family"],
+                          mono_family=mono_cfg["family"], custom_margins=custom_margins)
 
-    # Ubuntu Mono sempre presente (código), + fonte do corpo quando não-padrão
-    gf_families = ["Ubuntu+Mono:wght@400;700"]
+    # Fonte mono (código) sempre presente, + fonte do corpo quando não-padrão
+    gf_families = [mono_cfg["gf"]]
     if font_cfg["gf"]:
         gf_families.append(font_cfg["gf"])
     families = "&".join(f"family={f}" for f in gf_families)
@@ -491,10 +511,11 @@ async def html_to_pdf_bytes(html_content, width_preset="a4"):
             # Convert height from viewport pixels to mm using the same
             # width ratio (e.g.: 794px = 210mm), avoiding mismatch
             # between screen pixel measurement and print mm rendering.
-            # Add 5% safety margin to account for print-media reflow.
+            # Small safety buffer for print-media reflow: 1% + 2mm fixed.
+            # (5% proporcional criava um rabo em branco crescente no fim.)
             pdf_width_mm = float(wp["pdf_width"].replace("mm", ""))
             mm_per_px = pdf_width_mm / wp["viewport_px"]
-            content_height_mm = (content_height_px * mm_per_px) * 1.05
+            content_height_mm = (content_height_px * mm_per_px) * 1.01 + 2
 
             await page.pdf(
                 path=pdf_path,
@@ -573,7 +594,12 @@ async def convert_markdown(
     margin: str = Form("normal"),
     mermaid_layout: str = Form("adaptive"),
     font: str = Form("default"),
+    font_mono: str = Form("ubuntu-mono"),
     watermark: str = Form(""),
+    margin_top: str = Form(""),
+    margin_right: str = Form(""),
+    margin_bottom: str = Form(""),
+    margin_left: str = Form(""),
 ):
     """Converts markdown (upload or text) to PDF."""
     if file:
@@ -593,10 +619,27 @@ async def convert_markdown(
     # Strip trailing whitespace/newlines to prevent blank space at end of PDF
     content = content.rstrip()
 
+    # Margens personalizadas (estilo Word): valores em mm, clampados 0-80
+    custom_margins = None
+    if margin == "custom":
+        def _mm(value, default):
+            try:
+                v = float(str(value).strip().replace(",", "."))
+            except (TypeError, ValueError):
+                v = default
+            return f"{max(0.0, min(80.0, v)):g}mm"
+        custom_margins = {
+            "top": _mm(margin_top, 14),
+            "right": _mm(margin_right, 18),
+            "bottom": _mm(margin_bottom, 14),
+            "left": _mm(margin_left, 18),
+        }
+
     title = _extract_title(content, filename)
     body = md_to_html(content)
     full_html = wrap_for_pdf(body, title, margin_preset=margin, mermaid_layout=mermaid_layout,
-                             font=font, watermark=watermark)
+                             font=font, watermark=watermark, font_mono=font_mono,
+                             custom_margins=custom_margins)
     pdf_bytes = await html_to_pdf_bytes(full_html, width_preset=page_width)
 
     # Filename comes from the first non-empty line of the content,
