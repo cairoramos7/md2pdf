@@ -230,7 +230,7 @@ MARGIN_PRESETS = {
 # Fontes do corpo do PDF. "default" mantém a pilha de sistema atual;
 # as demais são carregadas do Google Fonts no HTML renderizado.
 FONT_PRESETS = {
-    "default":      {"gf": None,                            "family": None},
+    "default":      {"gf": "Inter:wght@400;600;700",        "family": "'Inter', 'Segoe UI', -apple-system, sans-serif"},
     "inter":        {"gf": "Inter:wght@400;600;700",        "family": "'Inter', sans-serif"},
     "roboto":       {"gf": "Roboto:wght@400;500;700",       "family": "'Roboto', sans-serif"},
     "open-sans":    {"gf": "Open+Sans:wght@400;600;700",    "family": "'Open Sans', sans-serif"},
@@ -260,7 +260,7 @@ def get_pdf_style(margin_preset="normal", font_family=None, mono_family=None, cu
     """
     m = custom_margins or MARGIN_PRESETS.get(margin_preset, MARGIN_PRESETS["normal"])
     padding = f"{m['top']} {m['right']} {m['bottom']} {m['left']}"
-    font_stack = font_family or "'Segoe UI', -apple-system, 'Helvetica Neue', Arial, sans-serif"
+    font_stack = font_family or "'Inter', 'Segoe UI', -apple-system, sans-serif"
     font_stack += ", 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', sans-serif"
     mono_stack = mono_family or MONO_FONT_PRESETS["ubuntu-mono"]["family"]
     mono_stack += ", 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', monospace"
