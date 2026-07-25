@@ -261,7 +261,9 @@ def get_pdf_style(margin_preset="normal", font_family=None, mono_family=None, cu
     m = custom_margins or MARGIN_PRESETS.get(margin_preset, MARGIN_PRESETS["normal"])
     padding = f"{m['top']} {m['right']} {m['bottom']} {m['left']}"
     font_stack = font_family or "'Segoe UI', -apple-system, 'Helvetica Neue', Arial, sans-serif"
+    font_stack += ", 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', sans-serif"
     mono_stack = mono_family or MONO_FONT_PRESETS["ubuntu-mono"]["family"]
+    mono_stack += ", 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', monospace"
     return f"""
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 html, body {{ height: auto !important; min-height: 0 !important; }}
@@ -378,8 +380,8 @@ def wrap_for_pdf(body_html, title, margin_preset="normal", mermaid_layout="adapt
     style = get_pdf_style(margin_preset, font_family=font_cfg["family"],
                           mono_family=mono_cfg["family"], custom_margins=custom_margins)
 
-    # Fonte mono (código) sempre presente, + fonte do corpo quando não-padrão
-    gf_families = [mono_cfg["gf"]]
+    # Fonte mono (código) sempre presente + Noto Color Emoji + fonte do corpo quando não-padrão
+    gf_families = [mono_cfg["gf"], "Noto+Color+Emoji"]
     if font_cfg["gf"]:
         gf_families.append(font_cfg["gf"])
     families = "&".join(f"family={f}" for f in gf_families)
