@@ -368,11 +368,16 @@ strong {{ font-weight: 600; color: #0C0A09; }}
 del {{ text-decoration: line-through; color: #78716C; }}
 mark {{ background: #FEF3C7; color: #713F12; padding: 1px 4px; border-radius: 2px; }}
 
-ul {{ margin: 8px 0 8px 24px; list-style-type: disc; }}
-ol {{ margin: 8px 0 8px 24px; list-style-type: decimal; }}
-li {{ margin: 8px 0; }}
-li > ul {{ margin: 2px 0 2px 20px; list-style-type: circle; }}
-li > ol {{ margin: 2px 0 2px 20px; list-style-type: lower-alpha; }}
+ul {{ margin: 8px 0; padding-left: 22px; list-style-type: disc; }}
+ol {{ margin: 8px 0; padding-left: 22px; list-style-type: decimal; }}
+li {{ margin: 3px 0; }}
+li::marker {{ color: #A8A29E; }}
+li > ul, li > ol {{
+    margin: 3px 0 3px 2px;
+    padding-left: 20px;
+    border-left: 1px solid #E7E5E4;
+}}
+li > ul {{ list-style-type: circle; }}
 
 table {{ width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.82em; line-height: 1.4; }}
 th, td {{ border: 1px solid #E7E5E4; padding: 5px 8px; text-align: left; word-break: break-word; }}
