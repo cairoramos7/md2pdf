@@ -52,12 +52,32 @@ CALLOUT_TYPES_RE = "|".join(CALLOUT_COLORS.keys())
 MD_EXTENSIONS = ["tables", "fenced_code", "sane_lists", "footnotes", "attr_list", "def_list", "nl2br"]
 
 
-def _md(text):
-    """Run the markdown parser on a piece of text."""
-    return markdown.markdown(text, extensions=MD_EXTENSIONS)
-
-
 _LIST_ITEM_RE = re.compile(r"^([-*+]|\d+[.)])\s+")
+
+
+def _ensure_blank_line_before_lists(text):
+    """Inserts a blank line before a list that starts right after plain text.
+
+    python-markdown requires a blank line before a list — unlike GitHub,
+    Obsidian and CommonMark, it will NOT let a list interrupt a paragraph.
+    Typing "Some text:" then, on the very next line, "1. foo" (a very common
+    pattern) makes it treat the list lines as plain text glued to the
+    paragraph with <br> instead of rendering a real <ol>/<ul>. This inserts
+    the blank line python-markdown needs whenever a top-level list item
+    immediately follows non-list text.
+    """
+    lines = text.split("\n")
+    out = []
+    for line in lines:
+        stripped = line.lstrip(" \t")
+        indent = len(line) - len(stripped)
+        if indent == 0 and _LIST_ITEM_RE.match(stripped) and out:
+            prev = out[-1]
+            prev_stripped = prev.lstrip(" \t")
+            if prev.strip() != "" and not _LIST_ITEM_RE.match(prev_stripped):
+                out.append("")
+        out.append(line)
+    return "\n".join(out)
 
 
 def _normalize_list_indentation(text):
@@ -123,9 +143,16 @@ def _normalize_list_indentation(text):
     return "\n".join(out)
 
 
+def _md(text):
+    """Run the markdown parser on a piece of text."""
+    text = _ensure_blank_line_before_lists(text)
+    text = _normalize_list_indentation(text)
+    return markdown.markdown(text, extensions=MD_EXTENSIONS)
+
+
 def md_to_html(md_text):
     """Converts Markdown to HTML with full support for all elements."""
-    text = _normalize_list_indentation(md_text)
+    text = md_text
     placeholders = {}
 
     # --- PHASE 1: Extract Mermaid blocks (protect from parser) ---
