@@ -57,9 +57,75 @@ def _md(text):
     return markdown.markdown(text, extensions=MD_EXTENSIONS)
 
 
+_LIST_ITEM_RE = re.compile(r"^([-*+]|\d+[.)])\s+")
+
+
+def _normalize_list_indentation(text):
+    """Remaps list indentation to multiples of 4 spaces.
+
+    python-markdown only recognises a sub-list when it is indented by a full
+    tab-stop (4 spaces) relative to its parent item. Most editors (and most
+    people typing by hand) use 2-space indents for nested bullets, which
+    python-markdown treats as siblings of the parent item instead of
+    children — collapsing the whole hierarchy to one level. This walks the
+    document tracking each list's original indent widths and rewrites them
+    (and their continuation lines) to the 4-space steps python-markdown
+    expects, regardless of how the source was indented.
+    """
+    lines = text.split("\n")
+    out = []
+    stack = []  # list of (orig_indent, new_indent)
+
+    for line in lines:
+        expanded = line.replace("\t", "    ")
+        stripped = expanded.lstrip(" ")
+        indent = len(expanded) - len(stripped)
+
+        if stripped == "":
+            out.append(line)
+            continue
+
+        if _LIST_ITEM_RE.match(stripped):
+            while stack and stack[-1][0] > indent:
+                stack.pop()
+            if stack and stack[-1][0] == indent:
+                new_indent = stack[-1][1]
+            else:
+                parent_new = stack[-1][1] if stack else -4
+                new_indent = parent_new + 4
+                stack.append((indent, new_indent))
+            out.append(" " * new_indent + stripped)
+            continue
+
+        if not stack:
+            out.append(line)
+            continue
+
+        if indent == 0:
+            stack = []
+            out.append(line)
+            continue
+
+        level = None
+        for orig, new in reversed(stack):
+            if orig < indent:
+                level = (orig, new)
+                break
+
+        if level is None:
+            stack = []
+            out.append(line)
+            continue
+
+        shift = level[1] - level[0]
+        out.append(" " * (indent + shift) + stripped)
+
+    return "\n".join(out)
+
+
 def md_to_html(md_text):
     """Converts Markdown to HTML with full support for all elements."""
-    text = md_text
+    text = _normalize_list_indentation(md_text)
     placeholders = {}
 
     # --- PHASE 1: Extract Mermaid blocks (protect from parser) ---
@@ -282,7 +348,7 @@ html, body {{ height: auto !important; min-height: 0 !important; }}
 
 body {{
     font-family: {font_stack};
-    line-height: 1.75;
+    line-height: 1.55;
     color: #1e293b;
     background: #fff;
     max-width: 100%;
@@ -296,15 +362,17 @@ h3 {{ font-size: 1.2em; margin: 20px 0 10px; color: #44403C; font-weight: 600; }
 h4 {{ font-size: 1.05em; margin: 16px 0 8px; color: #57534E; font-weight: 600; }}
 h5, h6 {{ font-size: 0.95em; margin: 12px 0 6px; color: #78716C; font-weight: 600; }}
 
-p {{ margin: 8px 0; }}
+p {{ margin: 12px 0; }}
 a {{ color: #92400E; text-decoration: none; border-bottom: 1px solid rgba(146,64,14,0.30); }}
 strong {{ font-weight: 600; color: #0C0A09; }}
 del {{ text-decoration: line-through; color: #78716C; }}
 mark {{ background: #FEF3C7; color: #713F12; padding: 1px 4px; border-radius: 2px; }}
 
-ul, ol {{ margin: 8px 0 8px 24px; }}
-li {{ margin: 4px 0; }}
-li > ul, li > ol {{ margin: 2px 0 2px 20px; }}
+ul {{ margin: 8px 0 8px 24px; list-style-type: disc; }}
+ol {{ margin: 8px 0 8px 24px; list-style-type: decimal; }}
+li {{ margin: 8px 0; }}
+li > ul {{ margin: 2px 0 2px 20px; list-style-type: circle; }}
+li > ol {{ margin: 2px 0 2px 20px; list-style-type: lower-alpha; }}
 
 table {{ width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.82em; line-height: 1.4; }}
 th, td {{ border: 1px solid #E7E5E4; padding: 5px 8px; text-align: left; word-break: break-word; }}
