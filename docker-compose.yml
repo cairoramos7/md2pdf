@@ -42,9 +42,8 @@ services:
       - "traefik.http.routers.md2pdf.tls.certresolver=letsencrypt"
       - "traefik.http.services.md2pdf.loadbalancer.server.port=8050"
     networks:
-      - maze-network
+      - md2pdf-network
 
 networks:
-  maze-network:
-    name: mazedelivery_maze-network
-    external: true
+  md2pdf-network:
+    name: md2pdf-network
